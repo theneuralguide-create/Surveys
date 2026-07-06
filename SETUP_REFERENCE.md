@@ -11,7 +11,7 @@
 - **Admin dashboard:** https://surveys-tau-beryl.vercel.app/admin.html
 - **Survey directory:** https://surveys-tau-beryl.vercel.app/surveys.html
 - **Local launcher:** Double-click `Start Survey Hub.command` in `Desktop/Surveys`
-- **GitHub repo:** https://github.com/theuneuralguide-create/Surveys
+- **GitHub repo:** https://github.com/theneuralguide-create/Surveys
 - **Supabase project:** supabase.com (Project ID: `zaftmandamqwxrxsibyk`)
 
 ---
@@ -119,7 +119,7 @@ surveys/
 3. Make your edits
 4. Save the file
 5. **Upload to GitHub:**
-   - Go to https://github.com/theuneuralguide-create/Surveys
+   - Go to https://github.com/theneuralguide-create/Surveys
    - Click on `index.html`
    - Click the pencil icon (Edit)
    - Paste your changes
@@ -183,7 +183,7 @@ To stop: Close the terminal window that appears.
 
 ## Deployment to Vercel
 
-Already done! Your repo at https://github.com/theuneuralguide-create/Surveys is connected to Vercel.
+Already done! Your repo at https://github.com/theneuralguide-create/Surveys is connected to Vercel.
 
 **How it works:**
 1. You edit files on GitHub (via web editor or upload)

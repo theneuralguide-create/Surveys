@@ -67,7 +67,7 @@ Added context to make the follow-up questions feel more natural.
 6. Filled in `config.js`
 
 ### Part 7: Vercel Deployment
-1. Created GitHub account (theuneuralguide-create)
+1. Created GitHub account (theneuralguide-create)
 2. Created GitHub repo `surveys`
 3. Uploaded all files from Desktop/Surveys to GitHub
 4. Connected Vercel to GitHub
@@ -89,7 +89,7 @@ Started installing GitHub CLI via Homebrew so Claude can directly push changes w
 | Decision-making survey | ✅ Live | https://surveys-tau-beryl.vercel.app/surveys/decision-making-survey.html |
 | Supabase backend | ✅ Configured | Tables created, credentials in config.js |
 | Local testing | ✅ Ready | Double-click `Start Survey Hub.command` |
-| GitHub integration | 🔄 In progress | Installing GitHub CLI for direct pushes |
+| GitHub integration | ✅ Done | gh CLI authenticated; Desktop/Surveys is a git repo, Claude pushes directly |
 
 ---
 
@@ -123,8 +123,8 @@ Desktop/Surveys/
 - **Admin password:** (user set during setup)
 
 ### GitHub
-- **Repo:** https://github.com/theuneuralguide-create/Surveys
-- **User:** theuneuralguide-create
+- **Repo:** https://github.com/theneuralguide-create/Surveys
+- **User:** theneuralguide-create
 
 ### Vercel
 - **Live URL:** https://surveys-tau-beryl.vercel.app/
@@ -195,10 +195,10 @@ Claude will have full context and can either:
 | Admin dashboard | https://surveys-tau-beryl.vercel.app/admin.html |
 | Survey directory | https://surveys-tau-beryl.vercel.app/surveys.html |
 | Decision-making survey | https://surveys-tau-beryl.vercel.app/surveys/decision-making-survey.html |
-| GitHub repo | https://github.com/theuneuralguide-create/Surveys |
+| GitHub repo | https://github.com/theneuralguide-create/Surveys |
 | Supabase project | https://app.supabase.com (Project ID: zaftmandamqwxrxsibyk) |
 | Share this with respondents | https://surveys-tau-beryl.vercel.app/surveys.html |
 
 ---
 
-**Status:** Ready for use. Awaiting GitHub CLI setup completion to enable direct Claude → GitHub pushes.
+**Status:** Ready for use. Fully operational — Claude pushes changes directly via git from Desktop/Surveys.
