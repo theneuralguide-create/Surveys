@@ -177,16 +177,63 @@
   .stat-box .num{ font-family:var(--font-display); font-size:26px; color:var(--blue); }
   .stat-box .lbl{ font-size:11.5px; color:var(--text-muted); margin-top:4px; }
 
+  .hub-back{ position:fixed; top:14px; left:18px; z-index:30; font-family:var(--font-mono); font-size:11px; letter-spacing:0.06em; color:var(--text-faint); text-decoration:none; }
+  .hub-back:hover{ color:var(--blue); }
+
   @media (prefers-reduced-motion: reduce){ *{ animation: none !important; transition: none !important; } }
   @media (max-width: 420px){
     .panel{ padding: 24px 18px; }
     .press-btn{ width: 176px; height:176px; font-size:20px; }
   }
+
+  /* ===== Short viewports (e.g. laptop/desktop screens with limited height) =====
+     Phones are tall, so these max-height rules leave them untouched; they only
+     kick in when vertical space is tight, letting the landing hero fit on screen
+     instead of overflowing. */
+  @media (max-height: 900px){
+    .center-wrap{ min-height: calc(100vh - 48px); }
+    .center-wrap.up-more{ padding-bottom: 6vh; }
+    .hero{ padding: 4px; }
+    .hero-eyebrow{ font-size: 17px; margin-bottom: 14px; }
+    .hero h1{ font-size: clamp(38px, 7vw, 66px); }
+    .hero .lead{ font-size: clamp(15px, 1.6vw, 18px); margin-top: 10px; }
+    .hero-stage{ padding: 22px 0 6px; }
+    .press-btn{ width: 208px; height: 208px; font-size: 26px; border-width: 8px; }
+    .ver-label{ margin-top: 16px; }
+    .ver-toggle{ margin-top: 6px; }
+    .fine-print{ margin-top: 14px; }
+  }
+  @media (max-height: 740px){
+    .center-wrap{ min-height: calc(100vh - 32px); }
+    .center-wrap.up-more{ padding-bottom: 2vh; }
+    .hero-eyebrow{ font-size: 14px; margin-bottom: 9px; }
+    .hero h1{ font-size: clamp(32px, 6vw, 50px); }
+    .hero .lead{ font-size: 14.5px; margin-top: 8px; }
+    .hero-stage{ padding: 13px 0 4px; }
+    .press-btn{ width: 160px; height: 160px; font-size: 21px; border-width: 7px; }
+    .ver-label{ margin-top: 11px; }
+    .ver-toggle{ margin-top: 5px; }
+    .ver-toggle button{ padding: 5px 12px; font-size: 12px; }
+    .fine-print{ margin-top: 10px; font-size: 11px; }
+  }
+  @media (max-height: 560px){
+    .center-wrap{ min-height: calc(100vh - 24px); }
+    .center-wrap.up-more{ padding-bottom: 0; }
+    .hero-eyebrow{ font-size: 12px; margin-bottom: 6px; }
+    .hero h1{ font-size: clamp(26px, 5vw, 40px); }
+    .hero .lead{ font-size: 13.5px; margin-top: 6px; }
+    .hero-stage{ padding: 9px 0 2px; }
+    .press-btn{ width: 122px; height: 122px; font-size: 17px; border-width: 6px; }
+    .ver-label{ margin-top: 8px; }
+    .fine-print{ margin-top: 7px; }
+  }
 </style>
 </head>
 <body>
+<a class="hub-back" href="../surveys.html">← All surveys</a>
 <div id="root"></div>
 
+<script src="../config.js"></script>
 <script>
 /* =================== DATA =================== */
 var OPT_AGE = ['Under 18','18-24','25-34','35-44','45-54','55-64','65+'];
@@ -258,8 +305,8 @@ var CONTENT = {
     landingLead: 'How do you weigh risk, reward, and the things that can never be undone? There are no right answers — only your honest ones.',
     s2_title: 'Would you press the button?',
     s2_body: 'Imagine a button that permanently transforms your life.<br><br>From the moment you press it, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that you will die within the next five years.</b><br><br>Would you press the button?',
-    s2_prob_yes: 'What is the highest probability of death within five years that you would still accept before deciding not to press the button?',
-    s2_prob_no: 'At what probability of death within five years would you become willing to press the button?',
+    s2_prob_yes: 'Since you’re okay with 10%, what is the highest probability of death within five years that you would still accept before deciding not to press the button?',
+    s2_prob_no: 'If the 10% was changeable to whatever you’d like, at what probability of death within five years would you become willing to press the button?',
     s2_horizon_title: 'How long would the risk need to be spread across before you would choose to press the button?',
     s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
     s3_title: 'Would you press the button?',
@@ -277,8 +324,8 @@ var CONTENT = {
     landingLead: 'How should we weigh the promise and the peril of powerful artificial intelligence — including choices that can never be undone? There are no right answers — only your honest ones.',
     s2_title: 'Would you switch it on?',
     s2_body: 'Imagine a personal AI system that permanently transforms your life.<br><br>From the moment you switch it on, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that the system fails in a way that kills you within the next five years.</b><br><br>Would you switch it on?',
-    s2_prob_yes: 'What is the highest probability of death within five years that you would still accept before deciding not to switch on the system?',
-    s2_prob_no: 'At what probability of death within five years would you become willing to switch on the system?',
+    s2_prob_yes: 'Since you’re okay with 10%, what is the highest probability of death within five years that you would still accept before deciding not to switch on the system?',
+    s2_prob_no: 'If the 10% was changeable to whatever you’d like, at what probability of death within five years would you become willing to switch on the system?',
     s2_horizon_title: 'How long would the risk need to be spread across before you would choose to switch on the system?',
     s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
     s3_title: 'Would you deploy it?',
@@ -333,9 +380,9 @@ function avg(arr){ if (!arr.length) return null; return arr.reduce(function(a,b)
    fall back to the browser's localStorage (works when the file is opened
    directly); finally fall back to a volatile in-memory store. The method
    signatures mirror the host API, and extra boolean args are ignored by the
-   fallbacks. NOTE: localStorage is per-device/per-browser — it lets you test
-   and review your own responses, but collecting responses from other people
-   across devices requires hosting the survey with a shared backend. */
+   fallbacks. NOTE: localStorage is per-device/per-browser. Cross-device
+   collection is handled by the hub backend below (see ../config.js); local
+   storage remains as the draft store and offline fallback. */
 var Store = (function(){
   if (typeof window !== 'undefined' && window.storage) return window.storage;
   var mem = {};
@@ -360,6 +407,49 @@ var Store = (function(){
   };
 })();
 var hasStorage = true;
+
+/* ===== Hub backend (Supabase via ../config.js) =====
+   When the hub is configured, completed responses are POSTed to the shared
+   `responses` table (tagged with this survey's slug), and comparisons/admin
+   read the pooled data back. When it isn't, everything falls back to the
+   local Store above. */
+var SURVEY_SLUG = 'decision-making';
+var HUB = (function(){
+  try {
+    var c = window.SURVEY_HUB_CONFIG;
+    if (c && c.url && c.anonKey &&
+        String(c.url).indexOf('http') === 0 &&
+        String(c.url).indexOf('YOUR-') === -1 &&
+        String(c.anonKey).indexOf('YOUR-') === -1) return c;
+  } catch(e){}
+  return null;
+})();
+function hubHeaders(){
+  return { 'apikey': HUB.anonKey, 'Authorization': 'Bearer ' + HUB.anonKey, 'Content-Type': 'application/json' };
+}
+function hubSubmit(record){
+  if (!HUB) return Promise.resolve(false);
+  return fetch(HUB.url + '/rest/v1/responses', {
+    method: 'POST',
+    headers: hubHeaders(),
+    body: JSON.stringify({ survey_slug: SURVEY_SLUG, variant: record._variant || 'base', answers: record })
+  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+function hubLoadResponses(){
+  if (!HUB) return Promise.resolve(null);
+  return fetch(HUB.url + '/rest/v1/responses?survey_slug=eq.' + SURVEY_SLUG + '&select=variant,answers,submitted_at&order=submitted_at.asc', { headers: hubHeaders() })
+    .then(function(r){ if (!r.ok) throw new Error('bad response'); return r.json(); })
+    .then(function(rows){
+      return rows.map(function(row){
+        var rec = (row.answers && typeof row.answers === 'object') ? row.answers : {};
+        if (!rec._variant) rec._variant = row.variant;
+        if (!rec._submittedAt) rec._submittedAt = row.submitted_at;
+        return rec;
+      });
+    })
+    .catch(function(){ return null; });
+}
+
 var saveTimer = null;
 function saveDraft(){
   if (saveTimer) clearTimeout(saveTimer);
@@ -857,7 +947,10 @@ async function finishSurvey(){
   });
   record._variant = state.variant;
   record._submittedAt = new Date().toISOString();
+  record._slug = SURVEY_SLUG;
 
+  /* send to the shared backend (if configured), and always keep a local copy */
+  try { await hubSubmit(record); } catch(e){}
   var key = 'response-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
   try { await Store.set(key, JSON.stringify(record), true); } catch(e){}
   try { await Store.delete('survey-draft', false); } catch(e){}
@@ -953,6 +1046,8 @@ async function initAdmin(){
   renderAdmin(responses);
 }
 async function loadAllResponses(){
+  var remote = await hubLoadResponses();
+  if (remote) return remote;
   try {
     var listRes = await Store.list('response-', true);
     var keys = (listRes && listRes.keys) || [];
