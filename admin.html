@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Research Surveys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="hub.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="index.html">Research Surveys</a>
+  <nav class="site-nav">
+    <a href="surveys.html">Surveys</a>
+    <a href="admin.html" class="active">Admin</a>
+  </nav>
+</header>
+
+<main id="main"></main>
+
+<footer class="site-foot">Admin dashboard · <a href="index.html">Back to site</a></footer>
+
+<script>
+/* =================== config =================== */
+function hubConfig(){
+  try {
+    var c = window.SURVEY_HUB_CONFIG;
+    if (c && c.url && c.anonKey &&
+        String(c.url).indexOf('http') === 0 &&
+        String(c.url).indexOf('YOUR-') === -1 &&
+        String(c.anonKey).indexOf('YOUR-') === -1) return c;
+  } catch(e){}
+  return null;
+}
+var CFG = hubConfig();
+var LOCAL = !CFG;   /* no backend configured → run fully on this computer */
+
+var DEFAULT_SURVEYS = [
+  {
+    slug: 'decision-making',
+    title: 'Decision-Making Under Uncertainty',
+    description: 'How do you weigh risk, reward, and the things that can never be undone? There are no right answers — only your honest ones.',
+    url: 'surveys/decision-making-survey.html',
+    status: 'live', est_minutes: '5-8', sort_order: 0
+  }
+];
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* =================== remote backend (Supabase) =================== */
+function apiHeaders(){
+  return { 'apikey': CFG.anonKey, 'Authorization': 'Bearer ' + CFG.anonKey, 'Content-Type': 'application/json' };
+}
+function rpc(fn, args){
+  return fetch(CFG.url + '/rest/v1/rpc/' + fn, { method:'POST', headers: apiHeaders(), body: JSON.stringify(args) })
+    .then(function(r){
+      if (!r.ok) return r.json().then(function(j){ throw new Error((j && j.message) || ('request failed (' + r.status + ')')); });
+      var ct = r.headers.get('content-type') || '';
+      return ct.indexOf('json') !== -1 ? r.json() : null;
+    });
+}
+function apiGet(path){
+  return fetch(CFG.url + path, { headers: apiHeaders() })
+    .then(function(r){ if (!r.ok) throw new Error('request failed (' + r.status + ')'); return r.json(); });
+}
+
+/* =================== local backend (this browser's storage) =================== */
+var LocalData = {
+  surveys: function(){
+    try {
+      var s = JSON.parse(localStorage.getItem('hub-surveys') || 'null');
+      if (Array.isArray(s) && s.length) return s;
+    } catch(e){}
+    return DEFAULT_SURVEYS.slice();
+  },
+  saveSurveys: function(list){ localStorage.setItem('hub-surveys', JSON.stringify(list)); },
+  responses: function(){
+    var out = [];
+    for (var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if (!k || k.indexOf('response-') !== 0) continue;
+      try {
+        var rec = JSON.parse(localStorage.getItem(k));
+        var answers = {};
+        Object.keys(rec).forEach(function(kk){
+          if (kk !== '_variant' && kk !== '_submittedAt' && kk !== '_slug') answers[kk] = rec[kk];
+        });
+        out.push({
+          id: k,
+          survey_slug: rec._slug || 'decision-making',
+          variant: rec._variant || '',
+          answers: answers,
+          submitted_at: rec._submittedAt || ''
+        });
+      } catch(e){}
+    }
+    out.sort(function(a,b){ return a.submitted_at < b.submitted_at ? 1 : -1; });
+    return out;
+  }
+};
+
+/* =================== unified backend =================== */
+var Backend = LOCAL ? {
+  listSurveys: function(){ return Promise.resolve(LocalData.surveys()); },
+  listResponses: function(){ return Promise.resolve(LocalData.responses()); },
+  upsertSurvey: function(s){
+    var list = LocalData.surveys();
+    var found = false;
+    for (var i = 0; i < list.length; i++){
+      if (list[i].slug === s.slug){ list[i] = s; found = true; break; }
+    }
+    if (!found) list.push(s);
+    LocalData.saveSurveys(list);
+    return Promise.resolve(s);
+  },
+  deleteSurvey: function(slug){
+    LocalData.saveSurveys(LocalData.surveys().filter(function(s){ return s.slug !== slug; }));
+    return Promise.resolve();
+  },
+  deleteResponse: function(id){ localStorage.removeItem(id); return Promise.resolve(); }
+} : {
+  listSurveys: function(){ return rpc('admin_list_surveys', { pw: state.pw }); },
+  listResponses: function(){ return apiGet('/rest/v1/responses?select=id,survey_slug,variant,answers,submitted_at&order=submitted_at.desc'); },
+  upsertSurvey: function(s){
+    return rpc('admin_upsert_survey', {
+      pw: state.pw, p_slug: s.slug, p_title: s.title, p_description: s.description,
+      p_url: s.url, p_status: s.status, p_est_minutes: s.est_minutes, p_sort_order: s.sort_order
+    });
+  },
+  deleteSurvey: function(slug){ return rpc('admin_delete_survey', { pw: state.pw, p_slug: slug }); },
+  deleteResponse: function(id){ return rpc('admin_delete_response', { pw: state.pw, p_id: id }); }
+};
+
+/* =================== state =================== */
+var state = {
+  pw: sessionStorage.getItem('hub-admin-pw') || null,
+  tab: 'results',            /* 'results' | 'surveys' */
+  surveys: [],
+  responses: [],
+  filterSlug: 'all',
+  editingSlug: null
+};
+var main = document.getElementById('main');
+
+/* =================== login gate (remote mode only) =================== */
+function renderLogin(msg){
+  main.innerHTML =
+    '<div class="gate-wrap"><div class="gate">' +
+      '<div class="panel">' +
+        '<h1>Admin</h1>' +
+        '<p>Enter the admin password to manage surveys and view results.</p>' +
+        '<div class="field"><input type="password" id="pw-input" placeholder="Password" autocomplete="current-password"></div>' +
+        (msg ? '<div class="form-error">' + escHtml(msg) + '</div>' : '') +
+        '<button class="btn-primary" style="width:100%;" onclick="tryLogin()">Unlock</button>' +
+      '</div>' +
+    '</div></div>';
+  var inp = document.getElementById('pw-input');
+  inp.focus();
+  inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') tryLogin(); });
+}
+function tryLogin(){
+  var pw = document.getElementById('pw-input').value;
+  if (!pw) return;
+  rpc('admin_check', { pw: pw }).then(function(ok){
+    if (ok === true){
+      state.pw = pw;
+      sessionStorage.setItem('hub-admin-pw', pw);
+      loadDashboard();
+    } else {
+      renderLogin('Incorrect password.');
+    }
+  }).catch(function(e){ renderLogin('Could not reach the backend: ' + e.message); });
+}
+function logout(){
+  state.pw = null;
+  sessionStorage.removeItem('hub-admin-pw');
+  renderLogin();
+}
+
+/* =================== data loading =================== */
+function loadDashboard(){
+  main.innerHTML = '<div class="page-head"><div class="page-eyebrow">Admin</div><h1 class="page-title">Loading…</h1></div>';
+  Promise.all([ Backend.listSurveys(), Backend.listResponses() ]).then(function(res){
+    state.surveys = res[0] || [];
+    state.responses = res[1] || [];
+    render();
+  }).catch(function(e){
+    if (String(e.message).indexOf('invalid admin password') !== -1){ logout(); return; }
+    main.innerHTML = '<div class="notice"><b>Could not load data:</b> ' + escHtml(e.message) + '</div>';
+  });
+}
+
+/* =================== shell =================== */
+function setTab(t){ state.tab = t; render(); }
+function render(){
+  var tabBtn = function(key, label){
+    return '<button class="btn-ghost' + (state.tab === key ? ' active' : '') + '" onclick="setTab(\'' + key + '\')">' + label + '</button>';
+  };
+  var localNote = LOCAL
+    ? '<div class="notice" style="margin-top:14px;"><b>Local mode.</b> You\'re seeing surveys and responses stored in this browser on this computer — perfect for running everything yourself. To collect responses from other people\'s devices later, connect the free backend described in <code>README.md</code>; this dashboard will switch over automatically.</div>'
+    : '';
+  main.innerHTML =
+    '<div class="page-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">' +
+      '<div><div class="page-eyebrow">Admin' + (LOCAL ? ' · Local mode' : '') + '</div><h1 class="page-title">Dashboard</h1></div>' +
+      '<div class="btn-row"><button class="btn-ghost" onclick="loadDashboard()">Refresh</button>' +
+      (LOCAL ? '' : '<button class="btn-ghost" onclick="logout()">Log out</button>') + '</div>' +
+    '</div>' +
+    localNote +
+    '<div class="tab-row">' + tabBtn('results', 'Results') + tabBtn('surveys', 'Manage surveys') + '</div>' +
+    '<div id="tab-body"></div>';
+  if (state.tab === 'results') renderResults();
+  else renderSurveysTab();
+}
+
+/* =================== results tab =================== */
+function setFilter(slug){ state.filterSlug = slug; renderResults(); }
+function filteredResponses(){
+  if (state.filterSlug === 'all') return state.responses;
+  return state.responses.filter(function(r){ return r.survey_slug === state.filterSlug; });
+}
+/* union of answer keys, in order of first appearance */
+function answerColumns(rows){
+  var cols = [], seen = {};
+  rows.forEach(function(r){
+    Object.keys(r.answers || {}).forEach(function(k){
+      if (!seen[k]){ seen[k] = true; cols.push(k); }
+    });
+  });
+  return cols;
+}
+function statBox(num, lbl){ return '<div class="stat-box"><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>'; }
+
+function renderResults(){
+  var body = document.getElementById('tab-body');
+  var view = filteredResponses();
+  var slugs = {};
+  state.responses.forEach(function(r){ slugs[r.survey_slug] = (slugs[r.survey_slug] || 0) + 1; });
+
+  var fbtn = function(key, label, count){
+    return '<button class="btn-ghost' + (state.filterSlug === key ? ' active' : '') + '" onclick="setFilter(\'' + escHtml(key) + '\')">' + escHtml(label) + ' (' + count + ')</button>';
+  };
+  var filterBtns = fbtn('all', 'All surveys', state.responses.length);
+  state.surveys.forEach(function(s){ filterBtns += fbtn(s.slug, s.title, slugs[s.slug] || 0); });
+  Object.keys(slugs).forEach(function(sl){
+    var known = state.surveys.some(function(s){ return s.slug === sl; });
+    if (!known) filterBtns += fbtn(sl, sl + ' (unregistered)', slugs[sl]);
+  });
+
+  var weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+  var recent = view.filter(function(r){ return new Date(r.submitted_at).getTime() > weekAgo; }).length;
+  var variants = {};
+  view.forEach(function(r){ var v = r.variant || '—'; variants[v] = (variants[v] || 0) + 1; });
+  var variantStr = Object.keys(variants).map(function(v){ return v + ': ' + variants[v]; }).join(' · ') || '—';
+  var latest = view.length ? new Date(view[0].submitted_at).toLocaleDateString() : '—';
+
+  var cols = answerColumns(view);
+  var headHtml = '<tr><th>submitted_at</th><th>survey</th><th>variant</th>' +
+    cols.map(function(c){ return '<th>' + escHtml(c) + '</th>'; }).join('') + '<th></th></tr>';
+  var rowsHtml = view.map(function(r, i){
+    var cells = '<td>' + (r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '') + '</td>' +
+      '<td>' + escHtml(r.survey_slug) + '</td>' +
+      '<td>' + escHtml(r.variant || '') + '</td>';
+    cols.forEach(function(c){
+      var v = (r.answers || {})[c];
+      cells += '<td>' + (v === undefined || v === null ? '' : escHtml(String(v))) + '</td>';
+    });
+    cells += '<td><button class="btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteResponse(' + i + ')">✕</button></td>';
+    return '<tr>' + cells + '</tr>';
+  }).join('');
+
+  body.innerHTML =
+    '<div class="panel">' +
+      '<h2>Results</h2>' +
+      '<p class="page-lead" style="margin-top:4px; font-size:14px;">' +
+        (LOCAL ? 'Every response saved in this browser, across all your surveys.' : 'Every response collected across all your surveys.') +
+        ' Filter by survey, browse the raw data, or download it as CSV.</p>' +
+      '<div class="btn-row" style="margin-top:16px;">' + filterBtns + '</div>' +
+      '<div class="stat-grid">' +
+        statBox(view.length, 'Responses in view') +
+        statBox(recent, 'In the last 7 days') +
+        statBox(escHtml(variantStr), 'By version') +
+        statBox(latest, 'Most recent') +
+      '</div>' +
+      '<div class="btn-row" style="margin-bottom:4px;">' +
+        '<button class="btn-primary" onclick="downloadCSV()"' + (view.length ? '' : ' disabled') + '>Download CSV (current view)</button>' +
+      '</div>' +
+      (view.length
+        ? '<div class="table-scroll"><table class="data-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>'
+        : '<div class="empty-note">No responses yet for this view.' + (LOCAL ? ' Take a survey in this browser and it will appear here.' : '') + '</div>') +
+    '</div>';
+}
+function deleteResponse(i){
+  var r = filteredResponses()[i];
+  if (!r) return;
+  if (!confirm('Delete this response permanently?')) return;
+  Backend.deleteResponse(r.id).then(function(){
+    state.responses = state.responses.filter(function(x){ return x.id !== r.id; });
+    renderResults();
+  }).catch(function(e){ alert('Delete failed: ' + e.message); });
+}
+function downloadCSV(){
+  var view = filteredResponses();
+  var cols = answerColumns(view);
+  var header = ['submitted_at','survey_slug','variant'].concat(cols);
+  var lines = [header.join(',')];
+  view.forEach(function(r){
+    var vals = [r.submitted_at, r.survey_slug, r.variant || ''].concat(cols.map(function(c){
+      var v = (r.answers || {})[c];
+      return v === undefined || v === null ? '' : String(v);
+    }));
+    lines.push(vals.map(function(v){
+      v = v.replace(/"/g, '""');
+      return /[",\n]/.test(v) ? '"' + v + '"' : v;
+    }).join(','));
+  });
+  var blob = new Blob([lines.join('\n')], { type:'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'responses-' + state.filterSlug + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* =================== manage surveys tab =================== */
+function renderSurveysTab(){
+  var body = document.getElementById('tab-body');
+  var counts = {};
+  state.responses.forEach(function(r){ counts[r.survey_slug] = (counts[r.survey_slug] || 0) + 1; });
+
+  var rowsHtml = state.surveys.map(function(s, i){
+    return '<tr>' +
+      '<td style="white-space:normal; min-width:180px;"><b>' + escHtml(s.title) + '</b></td>' +
+      '<td>' + escHtml(s.slug) + '</td>' +
+      '<td><span class="status-pill ' + escHtml(s.status) + '">' + escHtml(s.status) + '</span></td>' +
+      '<td>' + (counts[s.slug] || 0) + '</td>' +
+      '<td><a href="' + escHtml(s.url) + '" target="_blank" rel="noopener">open ↗</a></td>' +
+      '<td><button class="btn-ghost" style="padding:4px 10px; font-size:12px;" onclick="editSurvey(' + i + ')">Edit</button> ' +
+          '<button class="btn-danger" style="padding:4px 10px; font-size:12px;" onclick="deleteSurvey(' + i + ')">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+
+  var editing = null;
+  if (state.editingSlug){
+    editing = state.surveys.filter(function(s){ return s.slug === state.editingSlug; })[0] || null;
+  }
+  var f = editing || { slug:'', title:'', description:'', url:'surveys/', status:'live', est_minutes:'5-8', sort_order: state.surveys.length };
+
+  body.innerHTML =
+    '<div class="panel">' +
+      '<h2>Surveys</h2>' +
+      '<p class="page-lead" style="margin-top:4px; font-size:14px;">Everything registered on the site, including drafts and closed surveys. Only <b>live</b> surveys appear on the public page.</p>' +
+      (state.surveys.length
+        ? '<div class="table-scroll" style="max-height:none;"><table class="data-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Responses</th><th>Link</th><th>Actions</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>'
+        : '<div class="empty-note">No surveys registered yet — add your first one below.</div>') +
+    '</div>' +
+    '<div class="panel">' +
+      '<h2>' + (editing ? 'Edit survey' : 'Add a survey') + '</h2>' +
+      '<p class="page-lead" style="margin-top:4px; margin-bottom:16px; font-size:14px;">Put the survey\'s HTML file in the <code style="font-family:var(--font-mono); font-size:12.5px;">surveys/</code> folder first, then register it here so it appears in the directory.</p>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>Title</label><input id="f-title" value="' + escHtml(f.title) + '"></div>' +
+        '<div class="field"><label>Slug (short id, no spaces)</label><input id="f-slug" value="' + escHtml(f.slug) + '"' + (editing ? ' disabled' : '') + '><div class="hint">Used to tag responses, e.g. <b>decision-making</b>. Can\'t change after creation.</div></div>' +
+      '</div>' +
+      '<div class="field"><label>Description</label><textarea id="f-desc">' + escHtml(f.description) + '</textarea></div>' +
+      '<div class="field"><label>URL</label><input id="f-url" value="' + escHtml(f.url) + '"><div class="hint">Relative path like <b>surveys/my-survey.html</b>, or a full https:// link.</div></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>Status</label><select id="f-status">' +
+          ['live','draft','closed'].map(function(st){ return '<option value="' + st + '"' + (f.status === st ? ' selected' : '') + '>' + st + '</option>'; }).join('') +
+        '</select></div>' +
+        '<div class="field"><label>Estimated minutes</label><input id="f-mins" value="' + escHtml(f.est_minutes || '5-8') + '"></div>' +
+      '</div>' +
+      '<div class="form-error" id="f-error" style="display:none;"></div>' +
+      '<div class="btn-row">' +
+        '<button class="btn-primary" onclick="saveSurvey()">' + (editing ? 'Save changes' : 'Add survey') + '</button>' +
+        (editing ? '<button class="btn-ghost" onclick="cancelEdit()">Cancel</button>' : '') +
+      '</div>' +
+    '</div>';
+}
+function editSurvey(i){ state.editingSlug = state.surveys[i].slug; renderSurveysTab(); window.scrollTo(0, document.body.scrollHeight); }
+function cancelEdit(){ state.editingSlug = null; renderSurveysTab(); }
+function saveSurvey(){
+  var editing = !!state.editingSlug;
+  var slug = editing ? state.editingSlug : document.getElementById('f-slug').value.trim().toLowerCase().replace(/\s+/g, '-');
+  var title = document.getElementById('f-title').value.trim();
+  var url = document.getElementById('f-url').value.trim();
+  var err = document.getElementById('f-error');
+  if (!slug || !title || !url){
+    err.style.display = 'block';
+    err.textContent = 'Title, slug and URL are all required.';
+    return;
+  }
+  if (!editing && state.surveys.some(function(s){ return s.slug === slug; })){
+    err.style.display = 'block';
+    err.textContent = 'A survey with that slug already exists — edit it instead.';
+    return;
+  }
+  var prev = state.surveys.filter(function(s){ return s.slug === slug; })[0];
+  Backend.upsertSurvey({
+    slug: slug, title: title,
+    description: document.getElementById('f-desc').value.trim(),
+    url: url,
+    status: document.getElementById('f-status').value,
+    est_minutes: document.getElementById('f-mins').value.trim() || '5-8',
+    sort_order: prev ? (prev.sort_order || 0) : state.surveys.length
+  }).then(function(){
+    state.editingSlug = null;
+    loadDashboard();
+    state.tab = 'surveys';
+  }).catch(function(e){
+    err.style.display = 'block';
+    err.textContent = 'Save failed: ' + e.message;
+  });
+}
+function deleteSurvey(i){
+  var s = state.surveys[i];
+  if (!confirm('Remove "' + s.title + '" from the directory?\n\nCollected responses are kept, and the HTML file itself is not deleted.')) return;
+  Backend.deleteSurvey(s.slug).then(function(){
+    state.tab = 'surveys';
+    loadDashboard();
+  }).catch(function(e){ alert('Delete failed: ' + e.message); });
+}
+
+/* =================== init =================== */
+(function init(){
+  if (LOCAL){ loadDashboard(); return; }
+  if (state.pw){
+    rpc('admin_check', { pw: state.pw }).then(function(ok){
+      if (ok === true) loadDashboard(); else logout();
+    }).catch(function(){ renderLogin('Could not reach the backend.'); });
+  } else {
+    renderLogin();
+  }
+})();
+</script>
+
+</body>
+</html>

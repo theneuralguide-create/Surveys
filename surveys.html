@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Surveys — Research Surveys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="hub.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="index.html">Research Surveys</a>
+  <nav class="site-nav">
+    <a href="surveys.html" class="active">Surveys</a>
+    <a href="admin.html">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-head">
+    <div class="page-eyebrow">The collection</div>
+    <h1 class="page-title">Surveys</h1>
+    <p class="page-lead">Pick any survey below. Each is anonymous, takes a few minutes, and shows you a personal profile at the end.</p>
+  </div>
+  <div id="survey-list" class="card-grid"></div>
+</main>
+
+<footer class="site-foot">
+  Responses are anonymous and used for research only · <a href="index.html">About this project</a>
+</footer>
+
+<script>
+/* Shown when Supabase isn't configured yet, or can't be reached. */
+var FALLBACK_SURVEYS = [
+  {
+    slug: 'decision-making',
+    title: 'Decision-Making Under Uncertainty',
+    description: 'How do you weigh risk, reward, and the things that can never be undone? There are no right answers — only your honest ones.',
+    url: 'surveys/decision-making-survey.html',
+    est_minutes: '5-8'
+  }
+];
+
+function hubConfig(){
+  try {
+    var c = window.SURVEY_HUB_CONFIG;
+    if (c && c.url && c.anonKey &&
+        String(c.url).indexOf('http') === 0 &&
+        String(c.url).indexOf('YOUR-') === -1 &&
+        String(c.anonKey).indexOf('YOUR-') === -1) return c;
+  } catch(e){}
+  return null;
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* In local mode, the admin page manages the survey list in this browser's
+   storage — read it so locally-added surveys show up here too. */
+function localSurveys(){
+  try {
+    var s = JSON.parse(localStorage.getItem('hub-surveys') || 'null');
+    if (Array.isArray(s) && s.length) return s.filter(function(x){ return x.status === 'live'; });
+  } catch(e){}
+  return FALLBACK_SURVEYS;
+}
+
+function fetchSurveys(){
+  var cfg = hubConfig();
+  if (!cfg) return Promise.resolve(localSurveys());
+  return fetch(cfg.url + '/rest/v1/surveys?status=eq.live&select=slug,title,description,url,est_minutes&order=sort_order,created_at', {
+    headers: { 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey }
+  })
+  .then(function(r){ if (!r.ok) throw new Error('bad response'); return r.json(); })
+  .then(function(rows){ return rows.length ? rows : FALLBACK_SURVEYS; })
+  .catch(function(){ return FALLBACK_SURVEYS; });
+}
+
+function renderSurveys(list){
+  var el = document.getElementById('survey-list');
+  if (!list.length){
+    el.outerHTML = '<div class="empty-note">No surveys are live right now — check back soon.</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(s, i){
+    var mins = s.est_minutes || '5-8';
+    return '<a class="survey-card" href="' + escHtml(s.url) + '">' +
+      '<div class="card-meta">Survey ' + String(i+1).padStart(2, '0') + ' · ~' + escHtml(mins) + ' min · Anonymous</div>' +
+      '<h2>' + escHtml(s.title) + '</h2>' +
+      '<p>' + escHtml(s.description) + '</p>' +
+      '<div class="card-cta">Take the survey →</div>' +
+    '</a>';
+  }).join('');
+}
+
+document.getElementById('survey-list').innerHTML =
+  '<div class="empty-note" style="grid-column:1/-1;">Loading surveys…</div>';
+fetchSurveys().then(renderSurveys);
+</script>
+
+</body>
+</html>

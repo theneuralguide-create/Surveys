@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision-Making Under Uncertainty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f6f9fe;
+    --panel: #ffffff;
+    --panel-border: #e4eaf3;
+    --panel-border-lit: #cfdbec;
+    --blue: #2563eb;
+    --blue-bright: #3b82f6;
+    --blue-deep: #1d4ed8;
+    --blue-soft: rgba(37,99,235,0.08);
+    --blue-softer: rgba(37,99,235,0.04);
+    --text: #16202e;
+    --text-muted: #5c6879;
+    --text-faint: #97a2b3;
+    --font-display: 'Barlow Condensed', system-ui, sans-serif;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      linear-gradient(135deg, rgba(37,99,235,0.07), transparent 34%),
+      linear-gradient(300deg, rgba(59,130,246,0.06), transparent 40%),
+      radial-gradient(1000px 500px at 90% -5%, rgba(37,99,235,0.05), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding: 24px 16px 60px; line-height: 1.5;
+  }
+  #root{ width:100%; max-width: min(640px, 94vw); transition: max-width 180ms ease; }
+  #root.q-screen{ padding-top: 12vh; }            /* shift question boxes ~12% lower */
+  #root.landing-mode{ max-width: min(990px, 94vw); }
+  #root.results-mode{ max-width: min(760px, 94vw); padding-top: 4vh; }
+  #root.admin-mode{ max-width: 1100px; }
+  @media (min-width: 1100px){
+    #root{ max-width: 720px; }
+    #root.q-screen{ padding-top: 11vh; }
+  }
+
+  /* vertically-centered screens (landing, section breaks, thanks) */
+  .center-wrap{ min-height: calc(100vh - 90px); display:flex; flex-direction:column; align-items:stretch; justify-content:center; }
+  .center-wrap.up{ padding-bottom: 20vh; }        /* biases centered content ~10% higher */
+  .center-wrap.up-more{ padding-bottom: 14vh; }   /* biases centered content ~7% higher */
+
+  .eyebrow{ font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+  .panel{ background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; padding: 30px 28px; box-shadow: 0 1px 2px rgba(20,40,80,0.04), 0 18px 40px rgba(37,99,235,0.07); position: relative; animation: fadeIn 170ms ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:translateY(0);} }
+  h1{ font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 7vw, 44px); line-height: 1.06; }
+  h2{ font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 3vw, 32px); line-height: 1.2; }
+  p.lead{ color: var(--text-muted); font-size: clamp(15px, 1.5vw, 18px); margin-top: 12px; }
+  .prompt{ font-size: clamp(16px, 1.55vw, 19px); line-height: 1.6; margin: 16px 0 20px; color: var(--text); }
+  .prompt b{ color: var(--blue-deep); font-weight: 600; }
+  .prompt ul{ margin: 10px 0 10px 20px; }
+  .prompt li{ margin-bottom: 4px; }
+  .back-link{ position:absolute; top:16px; right:20px; background:none; border:none; color:var(--text-faint); font-family:var(--font-mono); font-size:11px; letter-spacing:0.04em; cursor:pointer; }
+  .back-link:hover{ color: var(--text-muted); }
+
+  .progress-bar-track{ height:6px; background:#e9eef7; border-radius:3px; margin-bottom: 8px; overflow:hidden; }
+  .progress-bar-fill{ height:100%; background:linear-gradient(90deg, var(--blue), var(--blue-bright)); transition:width 300ms ease; }
+  .progress-pct{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin-bottom:14px; display:block; }
+
+  /* ===== Landing hero ===== */
+  .hero{ text-align:center; padding: 10px 4px; }
+  .hero-eyebrow{ font-family:var(--font-mono); font-size:clamp(16px,2.2vw,24px); letter-spacing:0.18em; text-transform:uppercase; color:var(--blue); margin-bottom:24px; }
+  .hero h1{ font-size: clamp(51px, 11vw, 101px); letter-spacing:-0.015em; }
+  .hero .lead{ max-width:640px; font-size:clamp(17px,2vw,24px); margin-left:auto; margin-right:auto; }
+  .hero-stage{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 44px 0 12px; }
+  .press-btn{ width: 275px; height: 275px; border-radius: 50%; background: radial-gradient(circle at 35% 28%, var(--blue-bright), var(--blue) 62%, var(--blue-deep) 100%); border: 9px solid #dbe7fb; box-shadow: 0 0 0 5px rgba(37,99,235,0.12), 0 22px 50px rgba(37,99,235,0.32), inset 0 -10px 20px rgba(0,0,0,0.18), inset 0 10px 18px rgba(255,255,255,0.25); color: #ffffff; font-family: var(--font-display); font-weight: 700; font-size: 33px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transition: transform 110ms ease, box-shadow 110ms ease; }
+  .press-btn:hover{ transform: translateY(-2px); box-shadow: 0 0 0 4px rgba(37,99,235,0.16), 0 22px 46px rgba(37,99,235,0.38), inset 0 -8px 16px rgba(0,0,0,0.18), inset 0 8px 14px rgba(255,255,255,0.25); }
+  .press-btn:active{ transform: scale(0.95) translateY(2px); }
+  .fine-print{ font-size: 12px; color: var(--text-faint); margin-top: 22px; text-align:center; }
+  .ver-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin-top:26px; }
+  .ver-toggle{ display:inline-flex; gap:4px; margin-top:8px; padding:4px; background:#eef2f9; border:1px solid var(--panel-border); border-radius:999px; }
+  .ver-toggle button{ border:none; background:none; font-family:var(--font-mono); font-size:12.5px; padding:7px 15px; border-radius:999px; color:var(--text-muted); cursor:pointer; transition:all 110ms ease; }
+  .ver-toggle button:hover{ color:var(--blue-deep); }
+  .ver-toggle button.active{ background:#fff; color:var(--blue-deep); box-shadow:0 1px 3px rgba(20,40,80,0.14); font-weight:600; }
+
+  .section-break{ text-align:center; }
+  .section-num{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.18em; color:var(--text-faint); }
+  .section-title{ font-family:var(--font-display); font-weight:700; font-size:clamp(34px, 9vw, 50px); margin:10px 0 6px; color:var(--blue); line-height:1.05; }
+  .section-dots{ display:flex; gap:6px; justify-content:center; margin:18px 0 4px; }
+  .section-dot{ width:26px; height:4px; border-radius:2px; background:#dbe3f0; }
+  .section-dot.done{ background:var(--blue); }
+
+  .choice-col{ display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+  .choice-btn{ text-align:left; background:#fbfcfe; border:1px solid var(--panel-border-lit); border-radius:9px; color:var(--text); font-family:var(--font-body); font-size:15px; padding:14px 16px; cursor:pointer; transition:background 110ms ease, border-color 110ms ease, color 110ms ease; }
+  .choice-btn:hover{ border-color:var(--blue); background:var(--blue-softer); }
+  .choice-btn.active{ background:var(--blue-soft); border-color:var(--blue); color:var(--blue-deep); font-weight:600; }
+
+  /* political scale as a compact selectable ramp */
+  .pol-col{ display:flex; flex-direction:column; gap:6px; margin:18px 0 4px; }
+  .pol-btn{ position:relative; text-align:left; background:#fbfcfe; border:1px solid var(--panel-border-lit); border-radius:9px; color:var(--text); font-family:var(--font-body); font-size:15px; padding:12px 14px 12px 44px; cursor:pointer; transition:background 110ms ease, border-color 110ms ease; }
+  .pol-btn .dot{ position:absolute; left:16px; top:50%; transform:translateY(-50%); width:14px; height:14px; border-radius:50%; border:2px solid var(--panel-border-lit); background:#fff; }
+  .pol-btn:hover{ border-color:var(--blue); background:var(--blue-softer); }
+  .pol-btn.active{ background:var(--blue-soft); border-color:var(--blue); color:var(--blue-deep); font-weight:600; }
+  .pol-btn.active .dot{ border-color:var(--blue); background:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,0.18); }
+  .pol-note{ font-size:13px; color:var(--text-muted); margin-top:14px; }
+
+  .text-input{ width:100%; background:#fbfcfe; border:1px solid var(--panel-border-lit); border-radius:8px; color:var(--text); font-family:var(--font-body); font-size:15px; padding:12px 14px; }
+  .text-input:focus{ outline:none; border-color:var(--blue); background:#fff; }
+
+  .dropdown-wrap{ position:relative; margin: 16px 0 22px; }
+  .dropdown-list{ position:absolute; top:calc(100% + 4px); left:0; right:0; max-height:220px; overflow-y:auto; background:var(--panel); border:1px solid var(--panel-border-lit); border-radius:9px; box-shadow:0 12px 28px rgba(20,40,80,0.14); z-index:20; display:none; }
+  .dropdown-list.open{ display:block; }
+  .dropdown-item{ padding:10px 14px; font-size:14.5px; color:var(--text-muted); cursor:pointer; }
+  .dropdown-item:hover{ background: var(--blue-soft); color:var(--text); }
+
+  .slider-wrap{ position:relative; padding-top:34px; margin-top: 10px; }
+  .slider-bubble{ position:absolute; top:0; transform:translateX(-50%); background:var(--blue); color:#fff; font-family:var(--font-mono); font-size:12px; font-weight:600; padding:3px 8px; border-radius:5px; white-space:nowrap; }
+  .slider-bubble::after{ content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%); border:4px solid transparent; border-top-color:var(--blue); }
+  input[type=range]{ -webkit-appearance:none; width:100%; height:5px; border-radius:3px; background: #dbe3f0; outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #cfe0ff, var(--blue) 70%); border: 3px solid #fff; cursor:pointer; box-shadow: 0 2px 7px rgba(37,99,235,0.4); }
+  input[type=range]::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #cfe0ff, var(--blue) 70%); border: 3px solid #fff; cursor:pointer; }
+  .range-labels{ display:flex; justify-content:space-between; font-size:11px; color: var(--text-faint); margin-top:8px; font-family: var(--font-mono); }
+
+  /* quick-fire (all on one page: statements left, scale right) */
+  .qf-intro{ font-size:clamp(14px,1.4vw,16px); color:var(--text-muted); margin:6px 0 12px; }
+  .qf-head{ display:grid; grid-template-columns: 1fr 300px; gap:18px; align-items:end; }
+  .qf-head-legend{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-faint); padding:0 2px 6px; }
+  .qf-head-legend span{ text-align:left; line-height:1.25; }
+  .qf-row{ display:grid; grid-template-columns: 1fr 300px; gap:18px; align-items:center; padding:13px 0; border-bottom:1px solid var(--panel-border); }
+  .qf-row:last-of-type{ border-bottom:none; }
+  .qf-statement{ font-weight:500; font-size:clamp(15px,1.45vw,17px); line-height:1.35; }
+  .scale-legend{ display:flex; justify-content:space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-bottom: 8px; padding: 0 2px; }
+  .scale-row{ display:flex; gap:6px; }
+  .scale-btn{ flex:1; aspect-ratio: 1; min-width:0; border-radius: 8px; background: #fbfcfe; border: 1px solid var(--panel-border-lit); color: var(--text-faint); font-family: var(--font-mono); font-size: clamp(13px,1.3vw,16px); cursor:pointer; transition: all 90ms ease; }
+  .scale-btn:hover{ border-color: var(--blue); }
+  .scale-btn.active{ background: var(--blue); border-color: var(--blue); color: #fff; font-weight:600; }
+  @media (max-width: 560px){
+    .qf-head{ grid-template-columns: 1fr; }
+    .qf-row{ grid-template-columns: 1fr; gap:9px; padding:15px 0; }
+  }
+
+  .btn-row{ display:flex; gap:10px; margin-top: 8px; }
+  .btn-primary{ flex:1; background: var(--blue); color:#fff; border:none; border-radius:9px; font-family: var(--font-body); font-weight:600; font-size:15px; padding: 14px 18px; cursor:pointer; transition: background 120ms ease, filter 120ms ease; }
+  .btn-primary:hover{ filter: brightness(1.06); }
+  .btn-primary:disabled{ background: #dbe3f0; color: var(--text-faint); cursor:not-allowed; filter:none; }
+  .btn-ghost{ background:none; border:1px solid var(--panel-border-lit); color: var(--text-muted); border-radius:9px; font-family: var(--font-body); font-size:14px; padding: 12px 16px; cursor:pointer; }
+  .btn-ghost:hover{ border-color: var(--text-muted); color: var(--text); }
+
+  /* ===== results / comparison ===== */
+  .result-hero{ text-align:center; padding: 6px 4px 10px; }
+  .result-eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-faint); }
+  .result-title{ font-family:var(--font-display); font-weight:700; font-size:clamp(34px,8.5vw,52px); color:var(--blue); line-height:1.04; margin:8px 0 8px; }
+  .result-desc{ color:var(--text-muted); font-size:15.5px; max-width:460px; margin:0 auto; }
+  .result-sub{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin-top:16px; }
+  .cmp{ margin:22px 0 4px; }
+  .cmp-head{ display:flex; justify-content:space-between; align-items:baseline; }
+  .cmp-label{ font-weight:600; font-size:14.5px; }
+  .cmp-you{ font-family:var(--font-mono); font-size:12px; color:var(--blue); font-weight:600; }
+  .cmp-track{ position:relative; height:14px; background:#eef2f9; border-radius:7px; margin:9px 0 8px; }
+  .cmp-fill{ height:100%; background:linear-gradient(90deg, var(--blue), var(--blue-bright)); border-radius:7px; transition:width 600ms cubic-bezier(.22,.61,.36,1); }
+  .cmp-avg{ position:absolute; top:-5px; width:2px; height:24px; background:#9aa6b8; border-radius:1px; }
+  .cmp-avg-lbl{ position:absolute; top:-19px; transform:translateX(-50%); font-family:var(--font-mono); font-size:9px; color:#9aa6b8; white-space:nowrap; }
+  .cmp-note{ font-size:12.5px; color:var(--text-muted); }
+  .result-divider{ height:1px; background:var(--panel-border); margin:22px 0; }
+
+  .admin-wrap{ max-width:1100px; }
+  table.data-table{ border-collapse:collapse; width:100%; font-size:12px; font-family:var(--font-mono); }
+  table.data-table th, table.data-table td{ border:1px solid var(--panel-border); padding:6px 8px; text-align:left; white-space:nowrap; }
+  table.data-table th{ background:#f2f6fd; color:var(--blue-deep); position:sticky; top:0; }
+  .table-scroll{ overflow:auto; max-height:56vh; border:1px solid var(--panel-border); border-radius:10px; margin-top: 14px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:18px 0; }
+  .stat-box{ background:#f7faff; border:1px solid var(--panel-border); border-radius:10px; padding:14px; }
+  .stat-box .num{ font-family:var(--font-display); font-size:26px; color:var(--blue); }
+  .stat-box .lbl{ font-size:11.5px; color:var(--text-muted); margin-top:4px; }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation: none !important; transition: none !important; } }
+  @media (max-width: 420px){
+    .panel{ padding: 24px 18px; }
+    .press-btn{ width: 176px; height:176px; font-size:20px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* =================== DATA =================== */
+var OPT_AGE = ['Under 18','18-24','25-34','35-44','45-54','55-64','65+'];
+var OPT_GENDER = ['Man','Woman','Non-binary','Prefer to self-describe','Prefer not to say'];
+var OPT_EDU = ['Primary school','Secondary / High school','Vocational qualification / Apprenticeship',"Bachelor's degree","Master's degree",'Doctorate (PhD or equivalent)','Other','Prefer not to say'];
+var OPT_REFERRAL = ['Social media','Friend or family','Online community/forum','News article','University','Email','Search engine','Other'];
+var OPT_YESNO = ['Yes','No'];
+var OPT_YESNOUNSURE = ['Yes','No','Unsure'];
+var OPT_HORIZON = ['Less than 1 year','1-2 years','3-5 years','5-10 years','10-20 years','20-40 years','More than 40 years','I would never press it'];
+var OPT_S3_REASON = ['Even a small chance of irreversible catastrophe is unacceptable.','Small risks are acceptable when potential benefits are enormous.','The current world already carries substantial risks, so taking calculated risks is justified.',"I'm unsure."];
+var OPT_S5_PRINCIPLE = ['Permanent decisions should require overwhelming evidence of safety.','High-impact decisions sometimes require accepting uncertainty.','Avoiding action can be as risky as taking action.',"I'm unsure."];
+
+/* political ramps: label + numeric value (1-7) kept for stats/scoring */
+var POL_ECON = [
+  {l:'Far left', v:1}, {l:'Moderate left', v:2}, {l:'Centrist left', v:3},
+  {l:'Centrist', v:4},
+  {l:'Centrist right', v:5}, {l:'Moderate right', v:6}, {l:'Far right', v:7}
+];
+var POL_SOCIAL = [
+  {l:'Very progressive', v:1}, {l:'Progressive', v:2}, {l:'Slightly progressive', v:3},
+  {l:'Centrist', v:4},
+  {l:'Slightly conservative', v:5}, {l:'Conservative', v:6}, {l:'Very conservative', v:7}
+];
+
+var OPTIONS_MAP = {
+  s1_age: OPT_AGE, s1_gender: OPT_GENDER, s1_education: OPT_EDU, s1_referral: OPT_REFERRAL,
+  s2_press: OPT_YESNO, s2_horizon: OPT_HORIZON,
+  s3_system: OPT_YESNOUNSURE, s3_reasoning: OPT_S3_REASON,
+  s5_climate: OPT_YESNOUNSURE, s5_principle: OPT_S5_PRINCIPLE
+};
+var OTHER_TRIGGER_MAP = { s1_gender:'Prefer to self-describe', s1_education:'Other', s1_referral:'Other' };
+var OTHER_LABEL_MAP = { s1_gender:'Please specify', s1_education:'Please specify', s1_referral:'Please specify' };
+
+var COUNTRIES_OTHER = ['Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cabo Verde','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo (Democratic Republic of the)','Congo (Republic of the)','Costa Rica','Croatia','Cuba','Cyprus','Czechia','Denmark','Djibouti','Dominica','Dominican Republic','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guinea-Bissau','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kiribati','Kosovo','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Marshall Islands','Mauritania','Mauritius','Mexico','Micronesia','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia','Nauru','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan','Palau','Palestine','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saint Kitts and Nevis','Saint Lucia','Saint Vincent and the Grenadines','Samoa','San Marino','Sao Tome and Principe','Saudi Arabia','Senegal','Serbia','Seychelles','Sierra Leone','Singapore','Slovakia','Slovenia','Solomon Islands','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Timor-Leste','Togo','Tonga','Trinidad and Tobago','Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
+var PINNED = ['United Kingdom','United States'];
+var COUNTRY_LIST = PINNED.concat(COUNTRIES_OTHER.slice().sort());
+
+var LIKERT_STATEMENTS = [
+  'Society often waits too long before adopting transformative technologies.',
+  'Society sometimes adopts powerful technologies too quickly.',
+  'Avoiding catastrophic outcomes is more important than achieving extraordinary progress.',
+  'Extraordinary opportunities justify taking substantial risks.',
+  'Once a technology becomes widespread, it is usually impossible to reverse.',
+  'Experts should be cautious before deploying systems they cannot fully explain.',
+  'Humanity generally underestimates low-probability catastrophic events.',
+  'Future generations deserve significant consideration when making today’s decisions.',
+  'A very small chance of global catastrophe can outweigh enormous potential benefits.',
+  'Some risks are simply too great to justify, regardless of the possible rewards.'
+];
+
+var LIKERT_STATEMENTS_AI = [
+  'Society often waits too long before adopting transformative artificial intelligence.',
+  'Society sometimes adopts powerful AI systems too quickly.',
+  'Avoiding catastrophic outcomes from AI is more important than achieving extraordinary progress with it.',
+  'Extraordinary opportunities from AI justify taking substantial risks.',
+  'Once an AI system becomes widespread, it is usually impossible to reverse.',
+  'Experts should be cautious before deploying AI systems they cannot fully explain.',
+  'Humanity generally underestimates low-probability catastrophic risks from AI.',
+  'Future generations deserve significant consideration when making today’s decisions about AI.',
+  'A very small chance of AI causing global catastrophe can outweigh enormous potential benefits.',
+  'Some risks from AI are simply too great to justify, regardless of the possible rewards.'
+];
+
+/* ===== Variant content: 'base' (non-AI) vs 'ai' (AI existential risk) =====
+   Same structure/mechanism; only the phrasing changes so we can compare how
+   people respond when AI is named versus when it isn't. */
+var CONTENT = {
+  base: {
+    landingLead: 'How do you weigh risk, reward, and the things that can never be undone? There are no right answers — only your honest ones.',
+    s2_title: 'Would you press the button?',
+    s2_body: 'Imagine a button that permanently transforms your life.<br><br>From the moment you press it, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that you will die within the next five years.</b><br><br>Would you press the button?',
+    s2_prob_yes: 'What is the highest probability of death within five years that you would still accept before deciding not to press the button?',
+    s2_prob_no: 'At what probability of death within five years would you become willing to press the button?',
+    s2_horizon_title: 'How long would the risk need to be spread across before you would choose to press the button?',
+    s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
+    s3_title: 'Would you press the button?',
+    s3_body: 'If you press a button, you could permanently eliminate:<ul><li>War</li><li>Famine</li><li>Poverty</li><li>Severe economic instability</li></ul>Once pressed, it cannot ever be turned off or undone.<br><br>Independent experts estimate:<ul><li><b>97%</b> chance it succeeds permanently.</li><li><b>3%</b> chance it kills everyone.</li></ul>Would you press the button?',
+    s3_prob_title: 'What’s the highest probability of catastrophe you’d be willing to accept to press the button?',
+    s3_reasoning_title: 'Which statement best reflects your thought process about pressing the button?',
+    s5_title: 'Would you press the button?',
+    s5_body: 'If you press a button, you could permanently solve climate change.<br><br>Once pressed:<ul><li>Humans lose the ability to modify or deactivate it.</li><li>It becomes completely self-sustaining forever.</li></ul>Experts estimate:<ul><li><b>99%</b> chance it creates a stable climate indefinitely.</li><li><b>1%</b> chance it permanently makes Earth uninhabitable.</li></ul>Would you press the button?',
+    s5_prob_yes: 'What is the highest probability of failure you would still accept?',
+    s5_prob_no: 'At what probability of failure would you become willing to press the button?',
+    s5_principle_title: 'Which principle best matches your view?',
+    likert: LIKERT_STATEMENTS
+  },
+  ai: {
+    landingLead: 'How should we weigh the promise and the peril of powerful artificial intelligence — including choices that can never be undone? There are no right answers — only your honest ones.',
+    s2_title: 'Would you switch it on?',
+    s2_body: 'Imagine a personal AI system that permanently transforms your life.<br><br>From the moment you switch it on, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that the system fails in a way that kills you within the next five years.</b><br><br>Would you switch it on?',
+    s2_prob_yes: 'What is the highest probability of death within five years that you would still accept before deciding not to switch on the system?',
+    s2_prob_no: 'At what probability of death within five years would you become willing to switch on the system?',
+    s2_horizon_title: 'How long would the risk need to be spread across before you would choose to switch on the system?',
+    s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
+    s3_title: 'Would you deploy it?',
+    s3_body: 'A powerful artificial intelligence could be deployed to permanently eliminate:<ul><li>War</li><li>Famine</li><li>Poverty</li><li>Severe economic instability</li></ul>Once deployed, it can never be shut down or undone.<br><br>Independent experts estimate:<ul><li><b>97%</b> chance it succeeds permanently.</li><li><b>3%</b> chance it kills everyone.</li></ul>Would you deploy it?',
+    s3_prob_title: 'What’s the highest probability of catastrophe you’d be willing to accept to deploy the AI?',
+    s3_reasoning_title: 'Which statement best reflects your thought process about deploying the AI?',
+    s5_title: 'Would you deploy it?',
+    s5_body: 'An advanced AI could be deployed to permanently solve climate change.<br><br>Once deployed:<ul><li>Humans lose the ability to modify or deactivate it.</li><li>It becomes completely self-sustaining forever.</li></ul>Experts estimate:<ul><li><b>99%</b> chance it creates a stable climate indefinitely.</li><li><b>1%</b> chance it permanently makes Earth uninhabitable.</li></ul>Would you deploy it?',
+    s5_prob_yes: 'What is the highest probability of failure you would still accept?',
+    s5_prob_no: 'At what probability of failure would you become willing to deploy the AI?',
+    s5_principle_title: 'Which principle best matches your view?',
+    likert: LIKERT_STATEMENTS_AI
+  }
+};
+function content(){ return CONTENT[state.variant] || CONTENT.base; }
+
+var MAIN_IDS = ['s1_age','s1_gender','s1_country','s1_education','s1_econ','s1_social','s1_referral',
+  's2_press','s2_prob','s2_horizon',
+  's3_system','s3_prob','s3_reasoning',
+  's5_climate','s5_prob','s5_principle'];
+var LIKERT_IDS = [];
+for (var _li = 1; _li <= 10; _li++) LIKERT_IDS.push('l' + _li);
+var RECORD_IDS = MAIN_IDS.concat(LIKERT_IDS);          // stored + CSV
+var FLOW_IDS = MAIN_IDS.concat(['l_all']);             // navigation (quick-fire collapsed)
+
+var SECTIONS = [
+  { key:'s1', number:1, title:'About You', blurb:'A few quick questions to start.' },
+  { key:'s2', number:2, title:'Personal Risk', blurb:'Choices about your own life and future.' },
+  { key:'s3', number:3, title:'Society and Catastrophic Risk', blurb:'Choices made on behalf of everyone.' },
+  { key:'s5', number:4, title:'Irreversible Technology', blurb:'Decisions that can never be undone.' },
+  { key:'s6', number:5, title:'General Attitudes', blurb:'Quick reactions to a few statements.' }
+];
+function sectionFor(id){
+  if (id.indexOf('s1_') === 0) return SECTIONS[0];
+  if (id.indexOf('s2_') === 0) return SECTIONS[1];
+  if (id.indexOf('s3_') === 0) return SECTIONS[2];
+  if (id.indexOf('s5_') === 0) return SECTIONS[3];
+  return SECTIONS[4];
+}
+function sectionLabelFor(id){
+  var sec = sectionFor(id);
+  return 'Section ' + sec.number + ' · ' + sec.title;
+}
+
+/* =================== HELPERS =================== */
+function escJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function avg(arr){ if (!arr.length) return null; return arr.reduce(function(a,b){return a+b;}, 0) / arr.length; }
+
+/* =================== STORAGE =================== */
+/* Persistence layer: use a host-provided window.storage if present; otherwise
+   fall back to the browser's localStorage (works when the file is opened
+   directly); finally fall back to a volatile in-memory store. The method
+   signatures mirror the host API, and extra boolean args are ignored by the
+   fallbacks. NOTE: localStorage is per-device/per-browser — it lets you test
+   and review your own responses, but collecting responses from other people
+   across devices requires hosting the survey with a shared backend. */
+var Store = (function(){
+  if (typeof window !== 'undefined' && window.storage) return window.storage;
+  var mem = {};
+  var ls = null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage){
+      window.localStorage.setItem('__probe__','1');
+      window.localStorage.removeItem('__probe__');
+      ls = window.localStorage;
+    }
+  } catch(e){ ls = null; }
+  return {
+    get: function(k){ var v = ls ? ls.getItem(k) : (k in mem ? mem[k] : null); return Promise.resolve({ value: v }); },
+    set: function(k, v){ try { if (ls) ls.setItem(k, v); else mem[k] = v; } catch(e){ mem[k] = v; } return Promise.resolve(true); },
+    delete: function(k){ if (ls) ls.removeItem(k); else delete mem[k]; return Promise.resolve(true); },
+    list: function(prefix){
+      var keys = [];
+      if (ls){ for (var i=0;i<ls.length;i++){ var kk = ls.key(i); if (kk && kk.indexOf(prefix) === 0) keys.push(kk); } }
+      else { Object.keys(mem).forEach(function(kk){ if (kk.indexOf(prefix) === 0) keys.push(kk); }); }
+      return Promise.resolve({ keys: keys });
+    }
+  };
+})();
+var hasStorage = true;
+var saveTimer = null;
+function saveDraft(){
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    Store.set('survey-draft', JSON.stringify({answers: state.answers, idx: state.idx, variant: state.variant}), false).catch(function(){});
+  }, 600);
+}
+async function checkDraft(){
+  try {
+    var res = await Store.get('survey-draft', false);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch(e){}
+  return null;
+}
+
+/* =================== STATE =================== */
+var state = { answers:{}, idx:0, screen:'landing', lastSectionKey:null, onBreak:false, transitioning:false, variant:'base' };
+var FORCED_VARIANT = null;   /* set via #ai / #base or admin preview */
+
+async function resolveVariant(){
+  if (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base'){ state.variant = FORCED_VARIANT; return; }
+  try { var r = await Store.get('assigned-variant', false); if (r && (r.value === 'ai' || r.value === 'base')){ state.variant = r.value; return; } } catch(e){}
+  state.variant = Math.random() < 0.5 ? 'ai' : 'base';
+  try { await Store.set('assigned-variant', state.variant, false); } catch(e){}
+}
+
+function effectiveFlow(){
+  return FLOW_IDS.filter(function(id){
+    if (id === 's3_prob') return state.answers.s3_system !== 'Unsure';
+    if (id === 's5_prob') return state.answers.s5_climate !== 'Unsure';
+    return true;
+  });
+}
+function currentId(){ return effectiveFlow()[state.idx]; }
+function setAnswer(id, val){ state.answers[id] = val; saveDraft(); }
+function getAnswer(id){ return state.answers[id]; }
+
+function goNext(){
+  var flow = effectiveFlow();
+  if (state.idx < flow.length - 1){ state.idx++; showCurrentScreen(); }
+  else { finishSurvey(); }
+}
+function goBack(){ if (state.idx > 0){ state.idx--; showCurrentScreen(); } }
+
+var root = document.getElementById('root');
+
+/* =================== SECTION BREAKS =================== */
+function showCurrentScreen(){
+  var id = currentId();
+  var sec = sectionFor(id);
+  if (sec.key !== state.lastSectionKey){
+    state.lastSectionKey = sec.key;
+    state.onBreak = true;
+    renderSectionBreak(sec);
+  } else {
+    state.onBreak = false;
+    renderCurrent();
+  }
+}
+function dismissBreak(){ state.onBreak = false; renderCurrent(); }
+function renderSectionBreak(sec){
+  state.transitioning = false;
+  var dots = SECTIONS.map(function(s){
+    return '<div class="section-dot' + (s.number <= sec.number ? ' done' : '') + '"></div>';
+  }).join('');
+  root.className = '';
+  root.innerHTML =
+    '<div class="center-wrap up"><div class="panel section-break">' +
+      '<div class="section-num">SECTION ' + sec.number + ' OF ' + SECTIONS.length + '</div>' +
+      '<h1 class="section-title">' + sec.title + '</h1>' +
+      '<p class="lead">' + sec.blurb + '</p>' +
+      '<div class="section-dots">' + dots + '</div>' +
+      '<div class="btn-row" style="margin-top:24px;"><button class="btn-primary" onclick="dismissBreak()">Continue</button></div>' +
+    '</div></div>';
+}
+
+/* =================== SHELL =================== */
+function progressBarHtml(){
+  var flow = effectiveFlow();
+  var pct = Math.round((state.idx / flow.length) * 100);
+  return '<div class="progress-bar-track"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>' +
+    '<span class="progress-pct">Question ' + (state.idx+1) + ' of ' + flow.length + ' · ' + pct + '% complete</span>';
+}
+function screenShell(innerHtml){
+  var label = sectionLabelFor(currentId());
+  var backHtml = state.idx > 0 ? '<button class="back-link" onclick="goBack()">← Back</button>' : '';
+  return progressBarHtml() +
+    '<div class="panel" id="q-panel">' + backHtml +
+      '<div class="eyebrow">' + label + '</div>' + innerHtml +
+    '</div>';
+}
+
+/* =================== QUESTION RENDERERS =================== */
+function qSingle(title, bodyHtml, options, opts){
+  opts = opts || {};
+  var id = currentId();
+  var current = getAnswer(id);
+  var otherVal = getAnswer(id + '__other') || '';
+  var showOther = opts.otherTrigger && current === opts.otherTrigger;
+  var trig = opts.otherTrigger ? ("'" + escJs(opts.otherTrigger) + "'") : 'null';
+  var optsHtml = options.map(function(o){
+    var active = current === o ? ' active' : '';
+    return '<button class="choice-btn' + active + '" data-val="' + escAttr(o) + '" onclick="selectOption(\'' + escJs(o) + '\', ' + trig + ')">' + o + '</button>';
+  }).join('');
+  var otherHtml = showOther
+    ? '<input type="text" class="text-input" style="margin-top:10px;" placeholder="' + escAttr(opts.otherLabel || 'Please specify') + '" value="' + escAttr(otherVal) + '" oninput="setOther(this.value)">'
+    : '';
+  var continueHtml = showOther
+    ? '<div class="btn-row" style="margin-top:16px;"><button class="btn-primary" id="other-continue-btn" ' + (otherVal.trim() ? '' : 'disabled') + ' onclick="goNext()">Continue</button></div>'
+    : '';
+  return screenShell(
+    '<h2>' + title + '</h2>' +
+    (bodyHtml ? '<div class="prompt">' + bodyHtml + '</div>' : '') +
+    '<div class="choice-col">' + optsHtml + '</div>' + otherHtml + continueHtml
+  );
+}
+function selectOption(value, otherTrigger){
+  if (state.transitioning) return;
+  var id = currentId();
+  setAnswer(id, value);
+  if (otherTrigger && value === otherTrigger){
+    renderCurrent();
+    var inp = document.querySelector('#q-panel input[type=text]');
+    if (inp) inp.focus();
+    return;
+  }
+  var btns = document.querySelectorAll('#q-panel .choice-btn');
+  for (var i=0;i<btns.length;i++){ btns[i].classList.toggle('active', btns[i].getAttribute('data-val') === value); }
+  state.transitioning = true;
+  setTimeout(goNext, 165);
+}
+function setOther(v){
+  state.answers[currentId() + '__other'] = v;
+  saveDraft();
+  var btn = document.getElementById('other-continue-btn');
+  if (btn) btn.disabled = !v.trim();
+}
+
+/* political ramp (stores numeric value) */
+function qPolitical(title, bodyHtml, ramp){
+  var id = currentId();
+  var current = getAnswer(id);
+  var rows = ramp.map(function(o){
+    var active = current === o.v ? ' active' : '';
+    return '<button class="pol-btn' + active + '" data-val="' + o.v + '" onclick="selectNum(' + o.v + ')"><span class="dot"></span>' + o.l + '</button>';
+  }).join('');
+  return screenShell(
+    '<h2>' + title + '</h2>' +
+    (bodyHtml ? '<div class="pol-note">' + bodyHtml + '</div>' : '') +
+    '<div class="pol-col">' + rows + '</div>'
+  );
+}
+function selectNum(v){
+  if (state.transitioning) return;
+  setAnswer(currentId(), v);
+  var btns = document.querySelectorAll('#q-panel .pol-btn');
+  for (var i=0;i<btns.length;i++){ btns[i].classList.toggle('active', Number(btns[i].getAttribute('data-val')) === v); }
+  state.transitioning = true;
+  setTimeout(goNext, 165);
+}
+
+function qPctSlider(title, bodyHtml){
+  var id = currentId();
+  var val = getAnswer(id);
+  if (val === undefined){ val = 0; setAnswer(id, val); }
+  return screenShell(
+    '<h2>' + title + '</h2>' +
+    (bodyHtml ? '<div class="prompt">' + bodyHtml + '</div>' : '') +
+    '<div class="slider-wrap">' +
+      '<div class="slider-bubble" id="bubble">' + Number(val).toFixed(1) + '%</div>' +
+      '<input type="range" id="pct-slider" min="0" max="100" step="0.1" value="' + val + '" oninput="onPctInput(this.value)">' +
+    '</div>' +
+    '<div class="range-labels"><span>0%</span><span>100%</span></div>' +
+    '<div class="btn-row" style="margin-top:18px;"><button class="btn-primary" onclick="goNext()">Continue</button></div>'
+  );
+}
+function onPctInput(v){
+  setAnswer(currentId(), Number(v));
+  document.getElementById('bubble').textContent = Number(v).toFixed(1) + '%';
+  positionBubbleFor('pct-slider','bubble');
+}
+function positionBubbleFor(sliderId, bubbleId){
+  var input = document.getElementById(sliderId), bubble = document.getElementById(bubbleId);
+  if (!input || !bubble) return;
+  var min = parseFloat(input.min), max = parseFloat(input.max), val = parseFloat(input.value);
+  var pct = (val - min) / (max - min);
+  var thumb = 22;
+  var w = input.offsetWidth;
+  var pos = thumb/2 + pct * (w - thumb);
+  bubble.style.left = pos + 'px';
+}
+
+/* quick-fire: all 10 statements on one page — statements left, scale right */
+function qLikertAll(){
+  var rows = content().likert.map(function(stmt, i){
+    var idx = i + 1;
+    var id = 'l' + idx;
+    var current = getAnswer(id);
+    var btns = '';
+    for (var n = 1; n <= 7; n++){
+      var active = current === n ? ' active' : '';
+      btns += '<button class="scale-btn' + active + '" data-i="' + idx + '" data-n="' + n + '" onclick="selectLikertMulti(' + idx + ',' + n + ')">' + n + '</button>';
+    }
+    return '<div class="qf-row" id="qf-' + idx + '">' +
+      '<div class="qf-statement">' + stmt + '</div>' +
+      '<div class="scale-row">' + btns + '</div>' +
+    '</div>';
+  }).join('');
+  return screenShell(
+    '<h2>A few quick reactions</h2>' +
+    '<div class="qf-intro">Rate how much you agree with each statement (1 = strongly disagree, 7 = strongly agree). Answer them in any order.</div>' +
+    '<div class="qf-head"><div></div><div class="qf-head-legend"><span>Strongly<br>Disagree</span><span>Strongly<br>Agree</span></div></div>' +
+    rows +
+    '<div class="btn-row" style="margin-top:22px;"><button class="btn-primary" id="qf-submit" ' + (likertComplete() ? '' : 'disabled') + ' onclick="goNext()">See my results</button></div>'
+  );
+}
+function selectLikertMulti(i, n){
+  setAnswer('l' + i, n);
+  var btns = document.querySelectorAll('#qf-' + i + ' .scale-btn');
+  for (var k=0;k<btns.length;k++){ btns[k].classList.toggle('active', Number(btns[k].getAttribute('data-n')) === n); }
+  var sub = document.getElementById('qf-submit');
+  if (sub) sub.disabled = !likertComplete();
+}
+function likertComplete(){
+  for (var i=1;i<=10;i++){ if (getAnswer('l'+i) === undefined) return false; }
+  return true;
+}
+
+function qCountry(){
+  var current = getAnswer('s1_country') || '';
+  return screenShell(
+    '<h2>Which country do you currently live in?</h2>' +
+    '<div class="dropdown-wrap">' +
+      '<input type="text" id="country-input" class="text-input" placeholder="Start typing to search…" autocomplete="off" value="' + escAttr(current) + '" oninput="onCountryInput(this.value)" onfocus="onCountryFocus()" onblur="onCountryBlur()">' +
+      '<div class="dropdown-list" id="country-list"></div>' +
+    '</div>' +
+    '<div class="btn-row"><button class="btn-primary" id="country-continue" ' + (current ? '' : 'disabled') + ' onclick="goNext()">Continue</button></div>'
+  );
+}
+function countryMatches(q){
+  q = (q || '').toLowerCase();
+  if (!q) return COUNTRY_LIST.slice(0, 8);
+  return COUNTRY_LIST.filter(function(c){ return c.toLowerCase().indexOf(q) !== -1; }).slice(0, 8);
+}
+function renderCountryList(q){
+  var list = document.getElementById('country-list');
+  if (!list) return;
+  var matches = countryMatches(q);
+  list.innerHTML = matches.map(function(c){
+    return '<div class="dropdown-item" onmousedown="selectCountry(\'' + escJs(c) + '\')">' + c + '</div>';
+  }).join('') || '<div class="dropdown-item" style="cursor:default;">No matches</div>';
+  list.classList.add('open');
+}
+function onCountryInput(v){ renderCountryList(v); document.getElementById('country-continue').disabled = true; }
+function onCountryFocus(){ renderCountryList(document.getElementById('country-input').value); }
+function onCountryBlur(){ setTimeout(function(){ var l = document.getElementById('country-list'); if (l) l.classList.remove('open'); }, 150); }
+function selectCountry(c){
+  setAnswer('s1_country', c);
+  document.getElementById('country-input').value = c;
+  document.getElementById('country-list').classList.remove('open');
+  document.getElementById('country-continue').disabled = false;
+  setTimeout(goNext, 240);
+}
+
+/* =================== QUESTION DISPATCH =================== */
+function questionHtmlFor(id){
+  switch(id){
+    case 's1_age': return qSingle('What is your age?', '', OPTIONS_MAP.s1_age);
+    case 's1_gender': return qSingle('What is your gender?', '', OPTIONS_MAP.s1_gender, {otherTrigger: OTHER_TRIGGER_MAP.s1_gender, otherLabel: OTHER_LABEL_MAP.s1_gender});
+    case 's1_country': return qCountry();
+    case 's1_education': return qSingle('What is the highest level of education you have completed?', '', OPTIONS_MAP.s1_education, {otherTrigger: OTHER_TRIGGER_MAP.s1_education, otherLabel: OTHER_LABEL_MAP.s1_education});
+    case 's1_econ': return qPolitical('Economically, where would you place your political views?', 'Left-leaning views generally favour more government involvement in the economy, higher taxes to fund public services, and stronger welfare and regulation. Centrist views sit between the two. Right-leaning views generally favour lower taxes, smaller government, freer markets, and less regulation.', POL_ECON);
+    case 's1_social': return qPolitical('Socially, where would you place your political views?', 'Progressive views generally favour social change, greater emphasis on equality, and broader protections for minority groups. Centrist views sit between the two. Conservative views generally favour preserving traditional institutions and norms and prefer slower social change.', POL_SOCIAL);
+    case 's1_referral': return qSingle('Where did you first find this survey?', '', OPTIONS_MAP.s1_referral, {otherTrigger: OTHER_TRIGGER_MAP.s1_referral, otherLabel: OTHER_LABEL_MAP.s1_referral});
+
+    case 's2_press': return qSingle(content().s2_title, content().s2_body, OPTIONS_MAP.s2_press);
+    case 's2_prob': {
+      var yes2 = getAnswer('s2_press') === 'Yes';
+      return qPctSlider(yes2 ? content().s2_prob_yes : content().s2_prob_no, '');
+    }
+    case 's2_horizon': return qSingle(content().s2_horizon_title, content().s2_horizon_body, OPTIONS_MAP.s2_horizon);
+
+    case 's3_system': return qSingle(content().s3_title, content().s3_body, OPTIONS_MAP.s3_system);
+    case 's3_prob': return qPctSlider(content().s3_prob_title, '');
+    case 's3_reasoning': return qSingle(content().s3_reasoning_title, '', OPTIONS_MAP.s3_reasoning);
+
+    case 's5_climate': return qSingle(content().s5_title, content().s5_body, OPTIONS_MAP.s5_climate);
+    case 's5_prob': {
+      var yes5 = getAnswer('s5_climate') === 'Yes';
+      return qPctSlider(yes5 ? content().s5_prob_yes : content().s5_prob_no, '');
+    }
+    case 's5_principle': return qSingle(content().s5_principle_title, '', OPTIONS_MAP.s5_principle);
+
+    case 'l_all': return qLikertAll();
+
+    default:
+      return '<div class="panel">Unknown question.</div>';
+  }
+}
+
+function afterRender(id){
+  if (id === 's2_prob' || id === 's3_prob' || id === 's5_prob'){
+    positionBubbleFor('pct-slider','bubble');
+    var s1 = document.getElementById('pct-slider'); if (s1) s1.focus();
+  } else if (id === 's1_country'){
+    if (!getAnswer('s1_country')){ var ci = document.getElementById('country-input'); if (ci) ci.focus(); }
+  }
+}
+function renderCurrent(){
+  state.transitioning = false;
+  var id = currentId();
+  root.className = 'q-screen';
+  root.innerHTML = questionHtmlFor(id);
+  afterRender(id);
+}
+
+/* =================== KEYBOARD NAV =================== */
+function canProceed(id){
+  if (OPTIONS_MAP[id]){
+    var val = getAnswer(id);
+    if (!val) return false;
+    if (OTHER_TRIGGER_MAP[id] && val === OTHER_TRIGGER_MAP[id]){
+      var ov = getAnswer(id + '__other') || '';
+      return !!ov.trim();
+    }
+    return true;
+  }
+  if (id === 's1_econ' || id === 's1_social') return getAnswer(id) !== undefined;
+  if (id === 's1_country') return !!getAnswer('s1_country');
+  if (id === 's2_prob' || id === 's3_prob' || id === 's5_prob') return true;
+  if (id === 'l_all') return likertComplete();
+  return true;
+}
+function handleNumberKey(id, n){
+  if (id === 's1_econ'){ if (n <= 7) selectNum(POL_ECON[n-1].v); return; }
+  if (id === 's1_social'){ if (n <= 7) selectNum(POL_SOCIAL[n-1].v); return; }
+  var opts = OPTIONS_MAP[id];
+  if (opts && n <= opts.length){ selectOption(opts[n-1], OTHER_TRIGGER_MAP[id] || null); }
+}
+document.addEventListener('keydown', function(e){
+  if (state.screen !== 'survey') return;
+  if (e.key === 'Enter' && state.onBreak){ e.preventDefault(); dismissBreak(); return; }
+  if (state.onBreak) return;
+  var id = currentId();
+  var el = document.activeElement;
+  var isTextInput = el && el.tagName === 'INPUT' && el.type === 'text';
+  if (e.key === 'Enter'){
+    if (isTextInput && el.id === 'country-input') return;
+    if (canProceed(id)){ e.preventDefault(); goNext(); }
+    return;
+  }
+  if (isTextInput) return;
+  if (id === 'l_all') return; /* one page, multiple items: use mouse */
+  if (/^[1-9]$/.test(e.key)){ handleNumberKey(id, parseInt(e.key, 10)); }
+});
+
+/* =================== LANDING =================== */
+async function renderLanding(){
+  state.screen = 'landing';
+  root.className = 'landing-mode';
+  root.innerHTML = '<div class="center-wrap"><div class="panel"><h2>Loading…</h2></div></div>';
+  var draft = await checkDraft();
+  var hasDraft = !!(draft && draft.answers && Object.keys(draft.answers).length > 0);
+  if (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base') state.variant = FORCED_VARIANT;
+  else if (hasDraft && (draft.variant === 'ai' || draft.variant === 'base')) state.variant = draft.variant;
+  else await resolveVariant();
+  var cur = (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base') ? FORCED_VARIANT : 'random';
+  var vbtn = function(key, label){ return '<button class="' + (cur === key ? 'active' : '') + '" onclick="chooseVariant(\'' + key + '\')">' + label + '</button>'; };
+  root.innerHTML =
+    '<div class="center-wrap up-more"><div class="hero">' +
+      '<div class="hero-eyebrow">A Research Survey</div>' +
+      '<h1>Decision-Making<br>Under Uncertainty</h1>' +
+      '<p class="lead">' + content().landingLead + '</p>' +
+      '<div class="hero-stage"><button class="press-btn" onclick="startSurvey(false)">Begin</button></div>' +
+      (hasDraft ? '<div style="text-align:center; margin-top:16px;"><button class="btn-ghost" onclick="startSurvey(true)">Resume where I left off</button></div>' : '') +
+      '<div class="ver-label">Survey version</div>' +
+      '<div class="ver-toggle">' + vbtn('random', 'Random') + vbtn('base', 'Non-AI') + vbtn('ai', 'AI') + '</div>' +
+      '<div class="fine-print">Takes about 5–8 minutes · Responses are anonymous and used for research only.</div>' +
+    '</div></div>';
+}
+function chooseVariant(key){
+  FORCED_VARIANT = (key === 'ai' || key === 'base') ? key : null;
+  renderLanding();
+}
+function startSurvey(resume){
+  if (resume){
+    checkDraft().then(function(d){
+      state.answers = (d && d.answers) || {};
+      state.idx = (d && d.idx) || 0;
+      if (d && (d.variant === 'ai' || d.variant === 'base')) state.variant = d.variant;
+      state.screen = 'survey';
+      state.lastSectionKey = null;
+      showCurrentScreen();
+    });
+  } else {
+    state.answers = {}; state.idx = 0; state.screen = 'survey'; state.lastSectionKey = null;
+    showCurrentScreen();
+  }
+}
+
+/* =================== SCORING / PROFILE =================== */
+function numOf(r, k){ var v = r[k]; return (typeof v === 'number' && !isNaN(v)) ? v : null; }
+function likOf(r, k){ var v = r[k]; return (typeof v === 'number' && !isNaN(v)) ? v : 4; }
+function countPress(r){
+  return (r.s2_press === 'Yes' ? 1 : 0) + (r.s3_system === 'Yes' ? 1 : 0) + (r.s5_climate === 'Yes' ? 1 : 0);
+}
+function scoreRisk(r){
+  var pressComp = countPress(r) / 3 * 100;
+  var comps = [];
+  if (numOf(r,'s2_prob') !== null) comps.push(Math.min(100, numOf(r,'s2_prob') / 30 * 100));
+  if (numOf(r,'s3_prob') !== null) comps.push(Math.min(100, numOf(r,'s3_prob') / 10 * 100));
+  if (numOf(r,'s5_prob') !== null) comps.push(Math.min(100, numOf(r,'s5_prob') / 10 * 100));
+  var probComp = comps.length ? avg(comps) : 30;
+  var bold = (likOf(r,'l1') + likOf(r,'l4')) / 2;                       // 1-7 higher = bolder
+  var caution = (likOf(r,'l3') + likOf(r,'l7') + likOf(r,'l9') + likOf(r,'l10')) / 4;
+  var boldComp = (((bold - 1) / 6 * 100) + (100 - ((caution - 1) / 6 * 100))) / 2;
+  return Math.max(0, Math.min(100, Math.round(0.4 * pressComp + 0.3 * probComp + 0.3 * boldComp)));
+}
+function scoreDoom(r){
+  var items = [likOf(r,'l3'), likOf(r,'l5'), likOf(r,'l7'), likOf(r,'l9'), likOf(r,'l10')];
+  var base = (avg(items) - 1) / 6 * 100;
+  var pressInv = (3 - countPress(r)) / 3 * 100;
+  return Math.max(0, Math.min(100, Math.round(0.7 * base + 0.3 * pressInv)));
+}
+/* distinct 4th axis: how much weight given to the long term / future generations */
+function scoreFuture(r){
+  var futures = (likOf(r,'l8') * 0.7) + (likOf(r,'l5') * 0.3); // 1-7
+  return Math.max(0, Math.min(100, Math.round((futures - 1) / 6 * 100)));
+}
+function pctRankBelow(arr, v){
+  if (!arr.length) return 50;
+  var c = 0;
+  for (var i=0;i<arr.length;i++){ if (arr[i] <= v) c++; }
+  return Math.round(c / arr.length * 100);
+}
+
+/* titles by (risk band) x (doom band) */
+var TITLES = {
+  low: {
+    low:  {name:'The Grounded Moderate', desc:'You take life as it comes — neither chasing big risks nor bracing for catastrophe. A steady hand.'},
+    mid:  {name:'The Careful Guardian', desc:'You value stability and would rather protect what already works than gamble on what might.'},
+    high: {name:'The Sentinel', desc:'You see the fragility in things. Given the choice, you’d safeguard the future rather than roll the dice.'}
+  },
+  mid: {
+    low:  {name:'The Steady Optimist', desc:'You’re open to progress and broadly trust that things work out — without betting the house on it.'},
+    mid:  {name:'The Pragmatist', desc:'You weigh risk and reward case by case and rarely land at the extremes. Balance is your instinct.'},
+    high: {name:'The Watchful Realist', desc:'You’ll act when it counts, but you never lose sight of what could go wrong.'}
+  },
+  high: {
+    low:  {name:'The Accelerationist', desc:'You’d press the button. To you, progress is worth the gamble and hesitation is its own risk.'},
+    mid:  {name:'The Calculated Gambler', desc:'You embrace big bets — eyes wide open to the stakes, and willing to take them anyway.'},
+    high: {name:'The Fatalist', desc:'You’d take the leap even staring into the abyss. High stakes don’t scare you off; if anything, they focus you.'}
+  }
+};
+function bandOf(v){ return v < 40 ? 'low' : (v <= 66 ? 'mid' : 'high'); }
+function titleFor(risk, doom){ return TITLES[bandOf(risk)][bandOf(doom)]; }
+
+/* deterministic baseline so comparisons aren't empty for early respondents */
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function buildBaseline(){
+  var rnd = mulberry32(20260704);
+  var out = [];
+  for (var i=0;i<160;i++){
+    var r = {};
+    r.s2_press = rnd() < 0.55 ? 'Yes' : 'No';
+    r.s3_system = rnd() < 0.38 ? 'Yes' : (rnd() < 0.7 ? 'No' : 'Unsure');
+    r.s5_climate = rnd() < 0.5 ? 'Yes' : (rnd() < 0.75 ? 'No' : 'Unsure');
+    r.s2_prob = Math.round(Math.pow(rnd(),1.8) * 45 * 10) / 10;
+    r.s3_prob = Math.round(Math.pow(rnd(),2.2) * 12 * 10) / 10;
+    r.s5_prob = Math.round(Math.pow(rnd(),2.0) * 15 * 10) / 10;
+    r.s1_econ = 1 + Math.floor(rnd()*7);
+    r.s1_social = 1 + Math.floor(rnd()*7);
+    for (var j=1;j<=10;j++){
+      var caution = (j===3||j===5||j===7||j===9||j===10);
+      var centre = caution ? 5 : (j===1||j===4 ? 4 : 4);
+      var val = Math.round(centre + (rnd()-0.5) * 4);
+      r['l'+j] = Math.max(1, Math.min(7, val));
+    }
+    out.push(r);
+  }
+  return out;
+}
+var BASELINE = buildBaseline();
+
+/* =================== FINISH / RESULTS =================== */
+async function finishSurvey(){
+  state.screen = 'submitting';
+  root.className = '';
+  root.innerHTML = '<div class="center-wrap"><div class="panel"><h2>Scoring your answers…</h2></div></div>';
+
+  var record = {};
+  RECORD_IDS.forEach(function(id){ record[id] = state.answers[id]; });
+  Object.keys(state.answers).forEach(function(k){
+    if (k.indexOf('__other') !== -1) record[k] = state.answers[k];
+  });
+  record._variant = state.variant;
+  record._submittedAt = new Date().toISOString();
+
+  var key = 'response-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  try { await Store.set(key, JSON.stringify(record), true); } catch(e){}
+  try { await Store.delete('survey-draft', false); } catch(e){}
+
+  var real = await loadAllResponses();
+  renderResults(record, real);
+}
+
+function metricBarHtml(label, userVal, avgVal, note){
+  var u = Math.max(0, Math.min(100, userVal));
+  var a = Math.max(0, Math.min(100, avgVal));
+  return '<div class="cmp">' +
+    '<div class="cmp-head"><span class="cmp-label">' + label + '</span><span class="cmp-you">You: ' + Math.round(userVal) + '</span></div>' +
+    '<div class="cmp-track">' +
+      '<div class="cmp-fill" style="width:' + u + '%"></div>' +
+      '<div class="cmp-avg" style="left:' + a + '%"></div>' +
+      '<div class="cmp-avg-lbl" style="left:' + a + '%">avg</div>' +
+    '</div>' +
+    '<div class="cmp-note">' + note + '</div>' +
+  '</div>';
+}
+
+function renderResults(record, real){
+  state.screen = 'results';
+  var variant = record._variant || 'base';
+  var realSame = (real || []).filter(function(r){ return (r._variant || 'base') === variant; });
+  var pool = (realSame.length >= 20) ? realSame : realSame.concat(BASELINE);
+
+  var riskArr = pool.map(scoreRisk);
+  var doomArr = pool.map(scoreDoom);
+  var pressArr = pool.map(countPress);
+  var futureArr = pool.map(scoreFuture);
+
+  var uRisk = scoreRisk(record);
+  var uDoom = scoreDoom(record);
+  var uPress = countPress(record);
+  var uFuture = scoreFuture(record);
+
+  var t = titleFor(uRisk, uDoom);
+
+  var riskPct = pctRankBelow(riskArr, uRisk);
+  var doomPct = pctRankBelow(doomArr, uDoom);
+  var pressPct = pctRankBelow(pressArr, uPress);
+  var futurePct = pctRankBelow(futureArr, uFuture);
+
+  var riskNote = 'You’re more risk-tolerant than <b>' + riskPct + '%</b> of respondents.';
+  var doomNote = 'You lean more cautious than <b>' + doomPct + '%</b> of respondents.';
+  var pressWord = uPress === 3 ? 'all three' : (uPress === 0 ? 'none' : uPress);
+  var pressNote = 'You’d press <b>' + pressWord + '</b> of the three buttons — more than <b>' + pressPct + '%</b> of people.';
+  var futureNote = 'You weigh the long term and future generations more heavily than <b>' + futurePct + '%</b> of respondents.';
+
+  var realCount = realSame.length;
+  var armWord = variant === 'ai' ? 'this (AI) version' : 'this version';
+  var subText = realCount > 0
+    ? 'Compared with ' + realCount + (realCount === 1 ? ' person' : ' people') + ' who took ' + armWord
+    : 'Compared against a reference sample while responses are still being gathered';
+
+  var riskAvg = avg(riskArr), doomAvg = avg(doomArr), pressAvgPct = avg(pressArr) / 3 * 100, futureAvg = avg(futureArr);
+
+  root.className = 'results-mode';
+  root.innerHTML =
+    '<div class="panel">' +
+      '<div class="result-hero">' +
+        '<div class="result-eyebrow">Your profile</div>' +
+        '<div class="result-title">' + t.name + '</div>' +
+        '<div class="result-desc">' + t.desc + '</div>' +
+        '<div class="result-sub">' + subText + '</div>' +
+      '</div>' +
+      '<div class="result-divider"></div>' +
+      '<div style="font-family:var(--font-display); font-weight:600; font-size:20px; margin-bottom:4px;">How you compare</div>' +
+      metricBarHtml('Risk appetite', uRisk, riskAvg, riskNote) +
+      metricBarHtml('Caution about catastrophe', uDoom, doomAvg, doomNote) +
+      metricBarHtml('Willingness to act', uPress / 3 * 100, pressAvgPct, pressNote) +
+      metricBarHtml('Regard for future generations', uFuture, futureAvg, futureNote) +
+      '<div class="result-divider"></div>' +
+      '<p class="lead" style="text-align:center; margin-top:0;">Thank you for taking part. Your response has been recorded.</p>' +
+    '</div>';
+}
+
+/* =================== ADMIN DASHBOARD (gated) =================== */
+var ADMIN_CODE = 'results2026';
+async function initAdmin(){
+  var code = prompt('Enter admin code:');
+  if (code !== ADMIN_CODE){
+    root.className = '';
+    root.innerHTML = '<div class="center-wrap"><div class="panel"><h2>Access denied.</h2></div></div>';
+    return;
+  }
+  root.className = 'admin-mode';
+  root.innerHTML = '<div class="panel"><h2>Loading responses…</h2></div>';
+  var responses = await loadAllResponses();
+  window._allResponses = responses;
+  renderAdmin(responses);
+}
+async function loadAllResponses(){
+  try {
+    var listRes = await Store.list('response-', true);
+    var keys = (listRes && listRes.keys) || [];
+    var results = await Promise.all(keys.map(function(k){
+      return Store.get(k, true).then(function(r){
+        try { return JSON.parse(r.value); } catch(e){ return null; }
+      }).catch(function(){ return null; });
+    }));
+    return results.filter(Boolean);
+  } catch(e){ return []; }
+}
+function fmtPct(v){ return (v === null || v === undefined) ? '—' : v.toFixed(2) + '%'; }
+function statBox(num, lbl){ return '<div class="stat-box"><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>'; }
+function variantOf(r){ return r._variant === 'ai' ? 'ai' : 'base'; }
+
+function setAdminFilter(v){ window._adminFilter = v; renderAdmin(window._allResponses || []); }
+function previewVariant(v){ FORCED_VARIANT = v; try { location.hash = ''; } catch(e){} state.answers = {}; state.idx = 0; state.lastSectionKey = null; renderLanding(); }
+function adminFiltered(responses){
+  var f = window._adminFilter || 'all';
+  if (f === 'all') return responses;
+  return responses.filter(function(r){ return variantOf(r) === f; });
+}
+
+function renderAdmin(responses){
+  responses = responses || [];
+  var filter = window._adminFilter || 'all';
+  var nAll = responses.length;
+  var nBase = responses.filter(function(r){ return variantOf(r) === 'base'; }).length;
+  var nAi = responses.filter(function(r){ return variantOf(r) === 'ai'; }).length;
+  var view = adminFiltered(responses);
+  var n = view.length;
+
+  var s2Yes = view.filter(function(r){ return r.s2_press === 'Yes'; }).length;
+  var numField = function(f){ return view.map(function(r){ return r[f]; }).filter(function(v){ return typeof v === 'number'; }); };
+  var s2ProbVals = numField('s2_prob'), s3ProbVals = numField('s3_prob'), s5ProbVals = numField('s5_prob');
+  var econVals = numField('s1_econ'), socialVals = numField('s1_social');
+  var riskVals = view.map(scoreRisk), doomVals = view.map(scoreDoom);
+
+  var fbtn = function(key, label, count){
+    var active = filter === key;
+    return '<button class="' + (active ? 'btn-primary' : 'btn-ghost') + '" style="flex:none;" onclick="setAdminFilter(\'' + key + '\')">' + label + ' (' + count + ')</button>';
+  };
+  var filterBar = '<div style="font-family:var(--font-mono); font-size:11px; letter-spacing:0.04em; color:var(--text-faint); margin-bottom:8px;">VIEW BY SURVEY VERSION</div>' +
+    '<div class="btn-row" style="margin-bottom:16px; flex-wrap:wrap;">' +
+      fbtn('all', 'All', nAll) + fbtn('base', 'Non-AI', nBase) + fbtn('ai', 'AI', nAi) +
+    '</div>';
+
+  var statsHtml = '<div class="stat-grid">' +
+    statBox(n, 'Responses in view') +
+    statBox(n ? Math.round(s2Yes/n*100) + '%' : '—', 'Would act (personal scenario)') +
+    statBox(fmtPct(avg(s2ProbVals)), 'Avg. accepted risk — personal (5yr)') +
+    statBox(fmtPct(avg(s3ProbVals)), 'Avg. accepted catastrophe risk') +
+    statBox(fmtPct(avg(s5ProbVals)), 'Avg. accepted failure risk') +
+    statBox(n ? Math.round(avg(riskVals)) : '—', 'Avg. risk-appetite score') +
+    statBox(n ? Math.round(avg(doomVals)) : '—', 'Avg. caution score') +
+    statBox(avg(econVals) !== null ? avg(econVals).toFixed(1) + ' / 7' : '—', 'Avg. economic lean') +
+    statBox(avg(socialVals) !== null ? avg(socialVals).toFixed(1) + ' / 7' : '—', 'Avg. social lean') +
+  '</div>';
+
+  var cols = ['_variant'].concat(RECORD_IDS).concat(['_submittedAt']);
+  var theadHtml = '<tr>' + cols.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr>';
+  var rowsHtml = view.map(function(r){
+    return '<tr>' + cols.map(function(c){
+      var v = (c === '_variant') ? variantOf(r) : r[c];
+      return '<td>' + (v === undefined || v === null ? '' : escAttr(String(v))) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+
+  root.innerHTML =
+    '<div class="eyebrow">Admin · Response Dashboard</div>' +
+    '<div class="panel">' +
+      '<h1 style="font-size:28px;">Results</h1>' +
+      '<p class="lead" style="margin-top:6px;">Non-AI and AI versions are shown separately so you can compare how framing changes answers. New visitors are split 50/50 automatically.</p>' +
+      filterBar +
+      statsHtml +
+      '<div class="btn-row" style="margin-bottom:10px; flex-wrap:wrap;">' +
+        '<button class="btn-primary" style="flex:none;" onclick="downloadCSV()">Download CSV (current view)</button>' +
+        '<button class="btn-ghost" style="flex:none;" onclick="initAdmin()">Refresh</button>' +
+        '<button class="btn-ghost" style="flex:none;" onclick="previewVariant(\'base\')">Preview Non-AI survey</button>' +
+        '<button class="btn-ghost" style="flex:none;" onclick="previewVariant(\'ai\')">Preview AI survey</button>' +
+      '</div>' +
+      '<div class="table-scroll"><table class="data-table"><thead>' + theadHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+    '</div>';
+}
+function toCSV(rows){
+  var cols = ['_variant'].concat(RECORD_IDS).concat(['_submittedAt']);
+  var lines = [cols.join(',')];
+  rows.forEach(function(r){
+    lines.push(cols.map(function(c){
+      var raw = (c === '_variant') ? variantOf(r) : r[c];
+      var v = raw === undefined || raw === null ? '' : String(raw);
+      v = v.replace(/"/g, '""');
+      if (/[",\n]/.test(v)) v = '"' + v + '"';
+      return v;
+    }).join(','));
+  });
+  return lines.join('\n');
+}
+function downloadCSV(){
+  var filter = window._adminFilter || 'all';
+  var csv = toCSV(adminFiltered(window._allResponses || []));
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'survey-responses-' + filter + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* =================== INIT =================== */
+(function initApp(){
+  var h = location.hash;
+  if (h === '#admin'){ initAdmin(); return; }
+  if (h === '#ai'){ FORCED_VARIANT = 'ai'; }
+  else if (h === '#base' || h === '#nonai'){ FORCED_VARIANT = 'base'; }
+  renderLanding();
+})();
+</script>
+</body>
+</html>
