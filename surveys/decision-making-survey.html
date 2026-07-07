@@ -328,12 +328,12 @@ var LIKERT_STATEMENTS_AI = [
 ];
 
 /* ===== Probability tiers =====
-   Each respondent is randomly assigned ONE tier (10, 5 or 1 percent),
+   Each respondent is randomly assigned ONE tier (10% or 1%, split 50/50),
    independently of the AI/non-AI variant, and it is used consistently in
    every scenario: {P} = personal risk, {S}/{F} = success/failure odds for
-   the world-scale button (10→90/10, 5→95/5, 1→99/1). The tier is stored
-   with the response as _ptier so results can be compared across tiers. */
-var TIERS = { 10:{p:10,s:90,f:10}, 5:{p:5,s:95,f:5}, 1:{p:1,s:99,f:1} };
+   the world-scale button (10→90/10, 1→99/1). The tier is stored with the
+   response as _ptier so results can be compared across tiers. */
+var TIERS = { 10:{p:10,s:90,f:10}, 1:{p:1,s:99,f:1} };
 function fillTier(str){
   var t = TIERS[state.tier] || TIERS[10];
   return String(str).replace(/\{P\}/g, t.p).replace(/\{S\}/g, t.s).replace(/\{F\}/g, t.f);
@@ -492,7 +492,7 @@ async function checkDraft(){
 /* =================== STATE =================== */
 var state = { answers:{}, idx:0, screen:'survey', transitioning:false, variant:'base', tier:10 };
 var FORCED_VARIANT = null;   /* set via #ai / #base or admin preview */
-var FORCED_TIER = null;      /* set via #p10 / #p5 / #p1 for admin testing */
+var FORCED_TIER = null;      /* set via #p10 / #p1 for admin testing */
 
 async function resolveVariant(){
   if (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base'){ state.variant = FORCED_VARIANT; return; }
@@ -503,8 +503,8 @@ async function resolveVariant(){
 async function resolveTier(){
   if (TIERS[FORCED_TIER]){ state.tier = FORCED_TIER; return; }
   try { var r = await Store.get('assigned-tier', false); var tv = r && Number(r.value); if (TIERS[tv]){ state.tier = tv; return; } } catch(e){}
-  var opts = [10, 5, 1];
-  state.tier = opts[Math.floor(Math.random() * 3)];
+  var opts = [10, 1];
+  state.tier = opts[Math.floor(Math.random() * 2)];
   try { await Store.set('assigned-tier', String(state.tier), false); } catch(e){}
 }
 
@@ -850,7 +850,7 @@ document.addEventListener('keydown', function(e){
    probability tier are assigned randomly on first visit and remembered, so
    nobody can peek at the other version; a part-finished draft resumes
    silently where it left off. Admins can force things with URL hashes:
-   #ai / #base for the variant, #p10 / #p5 / #p1 for the tier, #admin for data. */
+   #ai / #base for the variant, #p10 / #p1 for the tier, #admin for data. */
 async function beginSurvey(){
   state.screen = 'survey';
   root.className = 'q-screen';
@@ -940,7 +940,7 @@ function buildBaseline(){
     r.s2_prob = Math.round(Math.pow(rnd(),1.8) * 45 * 10) / 10;
     r.s3_prob = Math.round(Math.pow(rnd(),2.2) * 12 * 10) / 10;
     r.s1_political = 1 + Math.floor(rnd()*7);
-    r._ptier = [10,5,1][Math.floor(rnd()*3)];
+    r._ptier = [10,1][Math.floor(rnd()*2)];
     r.s3_r1 = 1 + Math.floor(rnd()*10);
     r.s3_r2 = 1 + Math.floor(rnd()*10);
     r.s3_r3 = 1 + Math.floor(rnd()*10);
@@ -1144,7 +1144,7 @@ function renderAdmin(responses){
   var s2ProbVals = numField('s2_prob'), s3ProbVals = numField('s3_prob');
   var polVals = numField('s1_political');
   var riskVals = view.map(scoreRisk), doomVals = view.map(scoreDoom);
-  var tierCounts = {10:0, 5:0, 1:0};
+  var tierCounts = {10:0, 1:0};
   view.forEach(function(r){ if (tierCounts[r._ptier] !== undefined) tierCounts[r._ptier]++; });
 
   var fbtn = function(key, label, count){
@@ -1164,7 +1164,7 @@ function renderAdmin(responses){
     statBox(n ? Math.round(avg(riskVals)) : '—', 'Avg. risk-appetite score') +
     statBox(n ? Math.round(avg(doomVals)) : '—', 'Avg. caution score') +
     statBox(avg(polVals) !== null ? avg(polVals).toFixed(1) + ' / 7' : '—', 'Avg. political lean') +
-    statBox(tierCounts[10] + ' / ' + tierCounts[5] + ' / ' + tierCounts[1], 'Tier split (10% / 5% / 1%)') +
+    statBox(tierCounts[10] + ' / ' + tierCounts[1], 'Tier split (10% / 1%)') +
   '</div>';
 
   var cols = ['_variant','_ptier'].concat(RECORD_IDS).concat(['_submittedAt']);
@@ -1224,7 +1224,6 @@ function downloadCSV(){
   if (h === '#ai'){ FORCED_VARIANT = 'ai'; }
   else if (h === '#base' || h === '#nonai'){ FORCED_VARIANT = 'base'; }
   else if (h === '#p10'){ FORCED_TIER = 10; }
-  else if (h === '#p5'){ FORCED_TIER = 5; }
   else if (h === '#p1'){ FORCED_TIER = 1; }
   beginSurvey();
 })();
