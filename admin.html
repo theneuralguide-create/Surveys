@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="hub.css">
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -138,11 +139,12 @@ var Backend = LOCAL ? {
 /* =================== state =================== */
 var state = {
   pw: sessionStorage.getItem('hub-admin-pw') || null,
-  tab: 'results',            /* 'results' | 'surveys' */
+  tab: 'results',            /* 'results' | 'analytics' | 'surveys' */
   surveys: [],
   responses: [],
   filterSlug: 'all',
-  editingSlug: null
+  editingSlug: null,
+  ana: { slug: 'all', variant: 'all', tier: 'all', x: 's2_prob', y: 's3_prob' }
 };
 var main = document.getElementById('main');
 
@@ -210,9 +212,10 @@ function render(){
       (LOCAL ? '' : '<button class="btn-ghost" onclick="logout()">Log out</button>') + '</div>' +
     '</div>' +
     localNote +
-    '<div class="tab-row">' + tabBtn('results', 'Results') + tabBtn('surveys', 'Manage surveys') + '</div>' +
+    '<div class="tab-row">' + tabBtn('results', 'Results') + tabBtn('analytics', 'Analytics') + tabBtn('surveys', 'Manage surveys') + '</div>' +
     '<div id="tab-body"></div>';
   if (state.tab === 'results') renderResults();
+  else if (state.tab === 'analytics') renderAnalytics();
   else renderSurveysTab();
 }
 
@@ -268,8 +271,8 @@ function renderResults(){
       var v = (r.answers || {})[c];
       cells += '<td>' + (v === undefined || v === null ? '' : escHtml(String(v))) + '</td>';
     });
-    cells += '<td><button class="btn-danger" style="padding:2px 8px; font-size:11px;" onclick="deleteResponse(' + i + ')">✕</button></td>';
-    return '<tr>' + cells + '</tr>';
+    cells += '<td><button class="btn-danger" style="padding:2px 8px; font-size:11px;" onclick="event.stopPropagation(); deleteResponse(' + i + ')">✕</button></td>';
+    return '<tr style="cursor:pointer;" title="Click to read this response in full" onclick="showDetail(' + i + ')">' + cells + '</tr>';
   }).join('');
 
   body.innerHTML =
@@ -289,9 +292,48 @@ function renderResults(){
         '<button class="btn-primary" onclick="downloadCSV()"' + (view.length ? '' : ' disabled') + '>Download CSV (current view)</button>' +
       '</div>' +
       (view.length
-        ? '<div class="table-scroll"><table class="data-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>'
+        ? '<p class="page-lead" style="font-size:13px; margin-top:12px;">Tip: click any row to read that response with full question labels.</p>' +
+          '<div class="table-scroll"><table class="data-table"><thead>' + headHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>'
         : '<div class="empty-note">No responses yet for this view.' + (LOCAL ? ' Take a survey in this browser and it will appear here.' : '') + '</div>') +
     '</div>';
+}
+
+/* readable single-response view: every answer with its full question label */
+function showDetail(i){
+  var r = filteredResponses()[i];
+  if (!r) return;
+  var body = document.getElementById('tab-body');
+  var a = r.answers || {};
+  var keys = Object.keys(FIELD_LABELS).filter(function(k){ return a[k] !== undefined && a[k] !== null && a[k] !== ''; });
+  Object.keys(a).forEach(function(k){
+    if (keys.indexOf(k) === -1 && k !== '_submittedAt' && k !== '_slug' && a[k] !== undefined && a[k] !== null && a[k] !== '') keys.push(k);
+  });
+  var rowsHtml = keys.map(function(k){
+    return '<tr><td style="white-space:normal; min-width:260px; color:var(--text-muted);">' + escHtml(fieldLabel(k)) + '</td>' +
+      '<td style="white-space:normal; font-weight:600;">' + escHtml(String(a[k])) + '</td></tr>';
+  }).join('');
+  body.innerHTML =
+    '<div class="panel">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">' +
+        '<h2>One response, in full</h2>' +
+        '<div class="btn-row">' +
+          '<button class="btn-ghost" onclick="renderResults()">← Back to all results</button>' +
+          '<button class="btn-danger" onclick="deleteResponseById(\'' + escHtml(String(r.id)) + '\')">Delete this response</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="page-lead" style="margin-top:6px; font-size:14px;">' +
+        escHtml(r.survey_slug) + ' · version: <b>' + escHtml(r.variant || '—') + '</b>' +
+        (a._ptier !== undefined ? ' · probability tier: <b>' + escHtml(String(a._ptier)) + '%</b>' : '') +
+        ' · submitted ' + (r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '—') + '</p>' +
+      '<div class="table-scroll" style="max-height:none;"><table class="data-table"><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+    '</div>';
+}
+function deleteResponseById(id){
+  if (!confirm('Delete this response permanently?')) return;
+  Backend.deleteResponse(id).then(function(){
+    state.responses = state.responses.filter(function(x){ return String(x.id) !== String(id); });
+    renderResults();
+  }).catch(function(e){ alert('Delete failed: ' + e.message); });
 }
 function deleteResponse(i){
   var r = filteredResponses()[i];
@@ -323,6 +365,298 @@ function downloadCSV(){
   a.href = url; a.download = 'responses-' + state.filterSlug + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/* =================== analytics tab =================== */
+/* Human-readable labels for every field the surveys record (old + new field
+   names both covered, so early test responses still display). */
+var FIELD_LABELS = {
+  _variant: 'Survey version (AI / non-AI)',
+  _ptier: 'Assigned probability tier (%)',
+  s1_age: 'Age',
+  s1_gender: 'Gender',
+  s1_country: 'Country',
+  s1_education: 'Education',
+  s1_political: 'Political views (1 far left … 7 far right)',
+  s1_econ: 'Economic politics (old, 1-7)',
+  s1_social: 'Social politics (old, 1-7)',
+  s1_referral: 'Found the survey via',
+  s2_press: 'Personal button: would press?',
+  s2_prob: 'Personal: max % risk accepted',
+  s2_horizon: 'Personal: time horizon',
+  s3_system: 'World button: would press?',
+  s3_prob: 'World: max % catastrophe accepted',
+  s3_reasoning: 'Reasoning (old, multiple choice)',
+  s3_r1: 'Importance: any catastrophe risk unacceptable (1-10)',
+  s3_r2: 'Importance: small risks OK for huge benefits (1-10)',
+  s3_r3: 'Importance: world already carries risks (1-10)',
+  s4_p1: 'Principle: require overwhelming safety evidence (1-10)',
+  s4_p2: 'Principle: sometimes accept uncertainty (1-10)',
+  s4_p3: 'Principle: inaction can be as risky as action (1-10)',
+  s5_climate: 'Climate button (old): would press?',
+  s5_prob: 'Climate (old): max % failure accepted',
+  s5_principle: 'Principle (old, multiple choice)',
+  l1: 'L1: society waits too long to adopt tech',
+  l2: 'L2: society adopts powerful tech too quickly',
+  l3: 'L3: avoiding catastrophe beats progress',
+  l4: 'L4: big opportunities justify big risks',
+  l5: 'L5: widespread tech is irreversible',
+  l6: 'L6: experts should be cautious',
+  l7: 'L7: we underestimate rare catastrophes',
+  l8: 'L8: future generations matter',
+  l9: 'L9: tiny catastrophe odds outweigh benefits',
+  l10: 'L10: some risks are never justified'
+};
+function fieldLabel(k){ return FIELD_LABELS[k] || k; }
+var LIKERT_KEYS = ['l1','l2','l3','l4','l5','l6','l7','l8','l9','l10'];
+var CATEGORY_ORDERS = {
+  s1_age: ['Under 18','18-24','25-34','35-44','45-54','55-64','65+'],
+  s2_horizon: ['Less than 1 year','1-2 years','3-5 years','5-10 years','10-20 years','20-40 years','More than 40 years','I would never press it'],
+  s2_press: ['Yes','No'], s3_system: ['Yes','No','Unsure']
+};
+
+/* flatten a response into one flat object of answers + meta */
+function anaRows(){
+  var rows = state.responses;
+  if (state.ana.slug !== 'all') rows = rows.filter(function(r){ return r.survey_slug === state.ana.slug; });
+  var out = rows.map(function(r){
+    var o = {};
+    Object.keys(r.answers || {}).forEach(function(k){ o[k] = r.answers[k]; });
+    if (!o._variant) o._variant = r.variant || '';
+    return o;
+  });
+  if (state.ana.variant !== 'all') out = out.filter(function(o){ return (o._variant || 'base') === state.ana.variant; });
+  if (state.ana.tier !== 'all') out = out.filter(function(o){ return String(o._ptier) === String(state.ana.tier); });
+  return out;
+}
+function anaFieldKeys(rows){
+  var keys = [], seen = {};
+  Object.keys(FIELD_LABELS).forEach(function(k){ seen[k] = false; });
+  rows.forEach(function(o){ Object.keys(o).forEach(function(k){
+    if (k.indexOf('__other') !== -1 || k === '_submittedAt' || k === '_slug') return;
+    if (!(k in seen)){ seen[k] = true; keys.push(k); }
+    else if (seen[k] === false){ seen[k] = true; }
+  }); });
+  return Object.keys(FIELD_LABELS).filter(function(k){ return seen[k]; }).concat(keys);
+}
+function isNumericField(rows, k){
+  var num = 0, tot = 0;
+  rows.forEach(function(o){ var v = o[k]; if (v !== undefined && v !== null && v !== ''){ tot++; if (typeof v === 'number' && !isNaN(v)) num++; } });
+  return tot > 0 && num / tot >= 0.6;
+}
+function pearson(pairs){
+  var n = pairs.length;
+  if (n < 3) return null;
+  var sx=0, sy=0;
+  pairs.forEach(function(p){ sx += p[0]; sy += p[1]; });
+  var mx = sx/n, my = sy/n, cov=0, vx=0, vy=0;
+  pairs.forEach(function(p){ var dx=p[0]-mx, dy=p[1]-my; cov+=dx*dy; vx+=dx*dx; vy+=dy*dy; });
+  if (vx === 0 || vy === 0) return null;
+  return cov / Math.sqrt(vx * vy);
+}
+function corrStrength(r){
+  var a = Math.abs(r);
+  var s = a >= 0.85 ? 'very strong' : a >= 0.7 ? 'strong' : a >= 0.4 ? 'moderate' : a >= 0.2 ? 'weak' : 'negligible';
+  return s + (r >= 0 ? ' positive' : ' negative');
+}
+function numPairs(rows, kx, ky){
+  var out = [];
+  rows.forEach(function(o){
+    var x = o[kx], y = o[ky];
+    if (typeof x === 'number' && !isNaN(x) && typeof y === 'number' && !isNaN(y)) out.push([x, y]);
+  });
+  return out;
+}
+function catOrder(rows, k){
+  if (CATEGORY_ORDERS[k]){
+    var present = {};
+    rows.forEach(function(o){ if (o[k] !== undefined && o[k] !== null && o[k] !== '') present[o[k]] = true; });
+    var ordered = CATEGORY_ORDERS[k].filter(function(c){ return present[c]; });
+    Object.keys(present).forEach(function(c){ if (ordered.indexOf(c) === -1) ordered.push(c); });
+    return ordered;
+  }
+  var counts = {};
+  rows.forEach(function(o){ var v = o[k]; if (v !== undefined && v !== null && v !== '') counts[v] = (counts[v] || 0) + 1; });
+  var cats = Object.keys(counts);
+  var allNum = cats.every(function(c){ return !isNaN(Number(c)); });
+  if (allNum) cats.sort(function(a,b){ return Number(a) - Number(b); });
+  else cats.sort(function(a,b){ return counts[b] - counts[a]; });
+  return cats;
+}
+
+function setAna(key, val){ state.ana[key] = val; renderAnalytics(); }
+var anaChart = null;
+var BLUE = 'rgba(37,99,235,0.75)', BLUE_SOFT = 'rgba(37,99,235,0.35)', RED = 'rgba(182,69,69,0.75)';
+
+function renderAnalytics(){
+  var body = document.getElementById('tab-body');
+  var rows = anaRows();
+  var keys = anaFieldKeys(rows);
+  var slugs = {};
+  state.responses.forEach(function(r){ slugs[r.survey_slug] = true; });
+
+  var sel = function(id, options, current, allLabel){
+    var opts = (allLabel ? '<option value="all"' + (current === 'all' ? ' selected' : '') + '>' + allLabel + '</option>' : '');
+    options.forEach(function(o){
+      opts += '<option value="' + escHtml(o.v) + '"' + (String(current) === String(o.v) ? ' selected' : '') + '>' + escHtml(o.l) + '</option>';
+    });
+    return '<select id="' + id + '" onchange="setAna(\'' + id.replace('ana-','') + '\', this.value)">' + opts + '</select>';
+  };
+  var fieldOpts = keys.map(function(k){ return {v: k, l: fieldLabel(k)}; });
+  var yOpts = [{v:'', l:'— none: just count responses —'}].concat(fieldOpts);
+
+  var warn = rows.length < 10
+    ? '<div class="notice" style="margin-top:12px;"><b>Only ' + rows.length + ' response' + (rows.length === 1 ? '' : 's') + ' in view.</b> Correlations and averages are unstable below ~10 responses — treat everything here as a preview until more data arrives.</div>'
+    : '';
+
+  body.innerHTML =
+    '<div class="panel">' +
+      '<h2>Build a graph</h2>' +
+      '<p class="page-lead" style="margin-top:4px; font-size:14px;">Pick what goes on each axis and draw it. Numeric pairs get a scatter plot with the correlation statistic; categories get counts or per-category averages. Axes are always labelled with the full question.</p>' +
+      '<div class="field-row" style="margin-top:14px;">' +
+        '<div class="field"><label>Survey</label>' + sel('ana-slug', Object.keys(slugs).map(function(s){ return {v:s, l:s}; }), state.ana.slug, 'All surveys') + '</div>' +
+        '<div class="field"><label>Version</label>' + sel('ana-variant', [{v:'base',l:'Non-AI'},{v:'ai',l:'AI'}], state.ana.variant, 'Both versions') + '</div>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>Probability tier</label>' + sel('ana-tier', [{v:'10',l:'10%'},{v:'5',l:'5%'},{v:'1',l:'1%'}], state.ana.tier, 'All tiers') + '</div>' +
+        '<div class="field"><label>&nbsp;</label><div class="hint" style="margin-top:12px;">' + rows.length + ' responses match these filters</div></div>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>X axis</label>' + sel('ana-x', fieldOpts, state.ana.x) + '</div>' +
+        '<div class="field"><label>Y axis (optional)</label>' + sel('ana-y', yOpts, state.ana.y) + '</div>' +
+      '</div>' +
+      '<div class="btn-row"><button class="btn-primary" onclick="drawAnaChart()"' + (rows.length ? '' : ' disabled') + '>Draw chart</button></div>' +
+      warn +
+      '<div id="ana-stats" style="margin-top:16px;"></div>' +
+      '<div style="position:relative; height:380px; margin-top:8px;"><canvas id="ana-canvas"></canvas></div>' +
+    '</div>' +
+    '<div class="panel">' +
+      '<h2>General Attitudes: statement correlations</h2>' +
+      '<p class="page-lead" style="margin-top:4px; font-size:14px;">Pearson correlations between the ten Section 5 statements (respecting the filters above). Pairs that track each other almost perfectly — strongly positive <i>or</i> strongly negative — are probably measuring the same underlying attitude, which makes them candidates for trimming the section down (e.g. to 7) before mass distribution. <b>Nothing is removed automatically — the call is yours.</b></p>' +
+      likertMatrixHtml(rows) +
+    '</div>';
+  if (rows.length) drawAnaChart();
+}
+
+function likertMatrixHtml(rows){
+  var pairsRanked = [];
+  var cells = {};
+  for (var i = 0; i < LIKERT_KEYS.length; i++){
+    for (var j = i + 1; j < LIKERT_KEYS.length; j++){
+      var ps = numPairs(rows, LIKERT_KEYS[i], LIKERT_KEYS[j]);
+      var r = ps.length >= 5 ? pearson(ps) : null;
+      cells[i + '-' + j] = { r: r, n: ps.length };
+      if (r !== null) pairsRanked.push({ a: LIKERT_KEYS[i], b: LIKERT_KEYS[j], r: r, n: ps.length });
+    }
+  }
+  var head = '<tr><th></th>' + LIKERT_KEYS.map(function(k){ return '<th>' + k + '</th>'; }).join('') + '</tr>';
+  var bodyRows = LIKERT_KEYS.map(function(k, i){
+    var tds = LIKERT_KEYS.map(function(k2, j){
+      if (i === j) return '<td style="background:#eef2f9; text-align:center;">—</td>';
+      var c = cells[Math.min(i,j) + '-' + Math.max(i,j)];
+      if (!c || c.r === null) return '<td style="text-align:center; color:var(--text-faint);">·</td>';
+      var a = Math.abs(c.r);
+      var bg = c.r >= 0 ? 'rgba(37,99,235,' + (a * 0.75).toFixed(2) + ')' : 'rgba(182,69,69,' + (a * 0.75).toFixed(2) + ')';
+      var fg = a > 0.55 ? '#fff' : 'var(--text)';
+      return '<td style="text-align:center; background:' + bg + '; color:' + fg + ';" title="' + escHtml(fieldLabel(k) + '  ×  ' + fieldLabel(k2)) + ' (n=' + c.n + ')">' + c.r.toFixed(2) + '</td>';
+    }).join('');
+    return '<tr><th title="' + escHtml(fieldLabel(k)) + '">' + k + '</th>' + tds + '</tr>';
+  }).join('');
+  pairsRanked.sort(function(a,b){ return Math.abs(b.r) - Math.abs(a.r); });
+  var top = pairsRanked.slice(0, 6).map(function(p){
+    var flag = Math.abs(p.r) >= 0.7 ? ' — <b style="color:#b64545;">possible overlap, trim candidate</b>' : '';
+    return '<li style="margin-bottom:6px;"><b>' + p.a + ' × ' + p.b + '</b>: r = ' + p.r.toFixed(2) + ' (' + corrStrength(p.r) + ', n=' + p.n + ')' + flag +
+      '<br><span style="color:var(--text-muted); font-size:12.5px;">' + escHtml(fieldLabel(p.a)) + ' &nbsp;×&nbsp; ' + escHtml(fieldLabel(p.b)) + '</span></li>';
+  }).join('');
+  var legend = '<div style="font-size:12px; color:var(--text-muted); margin-top:10px;">Blue = move together · Red = move in opposite directions · Deeper colour = stronger. Cells show · until a pair has at least 5 answers.</div>';
+  return (pairsRanked.length
+      ? '<div style="margin-top:14px; font-weight:600; font-size:14.5px;">Strongest pairs right now</div><ol style="margin:8px 0 0 20px; font-size:14px;">' + top + '</ol>'
+      : '<div class="empty-note">Not enough data yet — the matrix fills in once responses arrive.</div>') +
+    '<div class="table-scroll" style="max-height:none; margin-top:16px;"><table class="data-table">' +
+    '<thead>' + head + '</thead><tbody>' + bodyRows + '</tbody></table></div>' + legend;
+}
+
+function drawAnaChart(){
+  if (typeof Chart === 'undefined'){
+    document.getElementById('ana-stats').innerHTML = '<div class="form-error">Chart library failed to load (offline?). Stats still work: pick two numeric fields and reload.</div>';
+    return;
+  }
+  var rows = anaRows();
+  var kx = state.ana.x, ky = state.ana.y;
+  var stats = document.getElementById('ana-stats');
+  var ctx = document.getElementById('ana-canvas');
+  if (!ctx) return;
+  if (anaChart){ anaChart.destroy(); anaChart = null; }
+  var xNum = isNumericField(rows, kx);
+  var yNum = ky ? isNumericField(rows, ky) : false;
+  var cfg = null, statHtml = '';
+
+  if (ky && xNum && yNum){
+    var ps = numPairs(rows, kx, ky);
+    var r = pearson(ps);
+    cfg = {
+      type: 'scatter',
+      data: { datasets: [{ label: fieldLabel(ky) + ' vs ' + fieldLabel(kx), data: ps.map(function(p){ return {x:p[0], y:p[1]}; }), backgroundColor: BLUE, pointRadius: 5 }] },
+      options: chartOpts(fieldLabel(kx), fieldLabel(ky))
+    };
+    statHtml = r === null
+      ? '<div class="notice">Fewer than 3 paired answers — no correlation yet.</div>'
+      : '<div class="stat-grid" style="margin:0;">' +
+          statBox('r = ' + r.toFixed(2), 'Pearson correlation — ' + corrStrength(r)) +
+          statBox(ps.length, 'Paired answers plotted') +
+        '</div>';
+  } else if (ky && !xNum && yNum){
+    var cats = catOrder(rows, kx);
+    var means = cats.map(function(c){
+      var vals = rows.filter(function(o){ return o[kx] === c || String(o[kx]) === c; }).map(function(o){ return o[ky]; }).filter(function(v){ return typeof v === 'number'; });
+      return vals.length ? vals.reduce(function(a,b){return a+b;},0) / vals.length : null;
+    });
+    var ns = cats.map(function(c){ return rows.filter(function(o){ return (o[kx] === c || String(o[kx]) === c) && typeof o[ky] === 'number'; }).length; });
+    cfg = {
+      type: 'bar',
+      data: { labels: cats.map(function(c, i){ return c + ' (n=' + ns[i] + ')'; }), datasets: [{ label: 'Average ' + fieldLabel(ky), data: means, backgroundColor: BLUE }] },
+      options: chartOpts(fieldLabel(kx), 'Average ' + fieldLabel(ky))
+    };
+    statHtml = '<div class="stat-grid" style="margin:0;">' + statBox(cats.length, 'Categories compared') + '</div>';
+  } else if (ky && !xNum && !yNum){
+    var cx = catOrder(rows, kx), cy = catOrder(rows, ky);
+    var palette = [BLUE, RED, BLUE_SOFT, 'rgba(90,90,90,0.6)', 'rgba(37,99,235,0.15)'];
+    var datasets = cy.map(function(yc, yi){
+      return { label: String(yc), backgroundColor: palette[yi % palette.length],
+        data: cx.map(function(xc){ return rows.filter(function(o){ return String(o[kx]) === String(xc) && String(o[ky]) === String(yc); }).length; }) };
+    });
+    cfg = { type: 'bar', data: { labels: cx, datasets: datasets }, options: chartOpts(fieldLabel(kx), 'Count — grouped by ' + fieldLabel(ky)) };
+    statHtml = '';
+  } else if (!ky && xNum){
+    var vals = rows.map(function(o){ return o[kx]; }).filter(function(v){ return typeof v === 'number' && !isNaN(v); });
+    if (vals.length){
+      var mn = Math.min.apply(null, vals), mxv = Math.max.apply(null, vals);
+      var span = (mxv - mn) || 1, bins = 10, counts = [], labels = [];
+      for (var b = 0; b < bins; b++){ counts.push(0); var lo = mn + span * b / bins, hi = mn + span * (b+1) / bins; labels.push(lo.toFixed(1) + '–' + hi.toFixed(1)); }
+      vals.forEach(function(v){ var b = Math.min(bins - 1, Math.floor((v - mn) / span * bins)); counts[b]++; });
+      var mean = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+      cfg = { type: 'bar', data: { labels: labels, datasets: [{ label: 'Responses', data: counts, backgroundColor: BLUE }] }, options: chartOpts(fieldLabel(kx), 'Number of responses') };
+      statHtml = '<div class="stat-grid" style="margin:0;">' + statBox(mean.toFixed(1), 'Average') + statBox(vals.length, 'Answers') + '</div>';
+    }
+  } else {
+    var cats2 = catOrder(rows, kx);
+    var counts2 = cats2.map(function(c){ return rows.filter(function(o){ return String(o[kx]) === String(c); }).length; });
+    cfg = { type: 'bar', data: { labels: cats2, datasets: [{ label: 'Responses', data: counts2, backgroundColor: BLUE }] }, options: chartOpts(fieldLabel(kx), 'Number of responses') };
+    statHtml = '';
+  }
+
+  stats.innerHTML = statHtml;
+  if (cfg) anaChart = new Chart(ctx, cfg);
+}
+function chartOpts(xTitle, yTitle){
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { font: { family: "'IBM Plex Sans', sans-serif" } } } },
+    scales: {
+      x: { title: { display: true, text: xTitle, font: { family: "'IBM Plex Sans', sans-serif", size: 13, weight: '600' } } },
+      y: { title: { display: true, text: yTitle, font: { family: "'IBM Plex Sans', sans-serif", size: 13, weight: '600' } }, beginAtZero: true }
+    }
+  };
 }
 
 /* =================== manage surveys tab =================== */

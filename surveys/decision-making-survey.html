@@ -55,6 +55,9 @@
   .center-wrap.up-more{ padding-bottom: 14vh; }   /* biases centered content ~7% higher */
 
   .eyebrow{ font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+  .section-label{ margin-bottom: 16px; }
+  .section-label .sec-num{ display:block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 3px; }
+  .section-label .sec-title{ font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 2.6vw, 28px); color: var(--blue); line-height: 1.1; }
   .panel{ background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; padding: 30px 28px; box-shadow: 0 1px 2px rgba(20,40,80,0.04), 0 18px 40px rgba(37,99,235,0.07); position: relative; animation: fadeIn 170ms ease; }
   @keyframes fadeIn{ from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:translateY(0);} }
   h1{ font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 7vw, 44px); line-height: 1.06; }
@@ -124,6 +127,30 @@
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #cfe0ff, var(--blue) 70%); border: 3px solid #fff; cursor:pointer; box-shadow: 0 2px 7px rgba(37,99,235,0.4); }
   input[type=range]::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #cfe0ff, var(--blue) 70%); border: 3px solid #fff; cursor:pointer; }
   .range-labels{ display:flex; justify-content:space-between; font-size:11px; color: var(--text-faint); margin-top:8px; font-family: var(--font-mono); }
+
+  /* big centred slider read-outs */
+  .slider-big{ text-align:center; margin:10px 0 18px; }
+  .slider-big .bignum{ font-family:var(--font-display); font-weight:700; font-size:clamp(48px,10vw,76px); color:var(--blue); line-height:1; }
+  .slider-big .bigsuffix{ display:block; font-size:15px; color:var(--text-muted); margin-top:6px; }
+  .slider-duo{ text-align:center; margin:10px 0 18px; display:flex; flex-direction:column; gap:14px; }
+  .duo-line .bignum{ font-family:var(--font-display); font-weight:700; font-size:clamp(36px,7vw,56px); line-height:1; }
+  .duo-line.ok .bignum{ color:var(--blue); }
+  .duo-line.bad .bignum{ color:#b64545; }
+  .duo-line .duo-lbl{ display:block; font-size:14px; color:var(--text-muted); margin-top:3px; }
+
+  /* one-at-a-time importance ratings (1-10) */
+  .rate-intro{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; }
+  .rate-legend{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin:18px 0 8px; }
+  .rate-grid{ display:grid; grid-template-columns:repeat(10,1fr); gap:6px; }
+  .rate-btn{ aspect-ratio:1; min-width:0; border-radius:8px; background:#fbfcfe; border:1px solid var(--panel-border-lit); color:var(--text-muted); font-family:var(--font-mono); font-size:15px; cursor:pointer; transition:all 90ms ease; }
+  .rate-btn:hover{ border-color:var(--blue); }
+  .rate-btn.active{ background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+  @media (max-width:560px){ .rate-grid{ grid-template-columns:repeat(5,1fr); } }
+
+  /* results: icon + share */
+  .result-icon{ font-size:56px; line-height:1; margin-bottom:10px; }
+  .share-row{ display:flex; justify-content:center; gap:10px; margin-top:14px; }
+  .share-url{ text-align:center; font-family:var(--font-mono); font-size:13px; color:var(--blue-deep); background:var(--blue-soft); border:1px dashed var(--blue); border-radius:8px; padding:10px 12px; margin-top:14px; letter-spacing:0.02em; }
 
   /* quick-fire (all on one page: statements left, scale right) */
   .qf-intro{ font-size:clamp(14px,1.4vw,16px); color:var(--text-muted); margin:6px 0 12px; }
@@ -237,32 +264,35 @@
 <script>
 /* =================== DATA =================== */
 var OPT_AGE = ['Under 18','18-24','25-34','35-44','45-54','55-64','65+'];
-var OPT_GENDER = ['Man','Woman','Non-binary','Prefer to self-describe','Prefer not to say'];
+var OPT_GENDER = ['Man','Woman','Trans (man)','Trans (woman)','Non-binary','Prefer to self-describe','Prefer not to say'];
 var OPT_EDU = ['Primary school','Secondary / High school','Vocational qualification / Apprenticeship',"Bachelor's degree","Master's degree",'Doctorate (PhD or equivalent)','Other','Prefer not to say'];
 var OPT_REFERRAL = ['Social media','Friend or family','Online community/forum','News article','University','Email','Search engine','Other'];
 var OPT_YESNO = ['Yes','No'];
 var OPT_YESNOUNSURE = ['Yes','No','Unsure'];
 var OPT_HORIZON = ['Less than 1 year','1-2 years','3-5 years','5-10 years','10-20 years','20-40 years','More than 40 years','I would never press it'];
-var OPT_S3_REASON = ['Even a small chance of irreversible catastrophe is unacceptable.','Small risks are acceptable when potential benefits are enormous.','The current world already carries substantial risks, so taking calculated risks is justified.',"I'm unsure."];
-var OPT_S5_PRINCIPLE = ['Permanent decisions should require overwhelming evidence of safety.','High-impact decisions sometimes require accepting uncertainty.','Avoiding action can be as risky as taking action.',"I'm unsure."];
 
-/* political ramps: label + numeric value (1-7) kept for stats/scoring */
-var POL_ECON = [
+/* rated one at a time on a 1-10 importance scale (no "unsure") */
+var RATE_STATEMENTS = {
+  s3_r1: 'Even a small chance of irreversible catastrophe is unacceptable.',
+  s3_r2: 'Small risks are acceptable when potential benefits are enormous.',
+  s3_r3: 'The current world already carries substantial risks, so taking calculated risks is justified.',
+  s4_p1: 'Permanent decisions should require overwhelming evidence of safety.',
+  s4_p2: 'High-impact decisions sometimes require accepting uncertainty.',
+  s4_p3: 'Avoiding action can be as risky as taking action.'
+};
+var RATE_IDS = ['s3_r1','s3_r2','s3_r3','s4_p1','s4_p2','s4_p3'];
+
+/* single combined political ramp: label + numeric value (1-7) kept for stats */
+var POL_VIEWS = [
   {l:'Far left', v:1}, {l:'Moderate left', v:2}, {l:'Centrist left', v:3},
   {l:'Centrist', v:4},
   {l:'Centrist right', v:5}, {l:'Moderate right', v:6}, {l:'Far right', v:7}
-];
-var POL_SOCIAL = [
-  {l:'Very progressive', v:1}, {l:'Progressive', v:2}, {l:'Slightly progressive', v:3},
-  {l:'Centrist', v:4},
-  {l:'Slightly conservative', v:5}, {l:'Conservative', v:6}, {l:'Very conservative', v:7}
 ];
 
 var OPTIONS_MAP = {
   s1_age: OPT_AGE, s1_gender: OPT_GENDER, s1_education: OPT_EDU, s1_referral: OPT_REFERRAL,
   s2_press: OPT_YESNO, s2_horizon: OPT_HORIZON,
-  s3_system: OPT_YESNOUNSURE, s3_reasoning: OPT_S3_REASON,
-  s5_climate: OPT_YESNOUNSURE, s5_principle: OPT_S5_PRINCIPLE
+  s3_system: OPT_YESNOUNSURE
 };
 var OTHER_TRIGGER_MAP = { s1_gender:'Prefer to self-describe', s1_education:'Other', s1_referral:'Other' };
 var OTHER_LABEL_MAP = { s1_gender:'Please specify', s1_education:'Please specify', s1_referral:'Please specify' };
@@ -297,77 +327,71 @@ var LIKERT_STATEMENTS_AI = [
   'Some risks from AI are simply too great to justify, regardless of the possible rewards.'
 ];
 
+/* ===== Probability tiers =====
+   Each respondent is randomly assigned ONE tier (10, 5 or 1 percent),
+   independently of the AI/non-AI variant, and it is used consistently in
+   every scenario: {P} = personal risk, {S}/{F} = success/failure odds for
+   the world-scale button (10→90/10, 5→95/5, 1→99/1). The tier is stored
+   with the response as _ptier so results can be compared across tiers. */
+var TIERS = { 10:{p:10,s:90,f:10}, 5:{p:5,s:95,f:5}, 1:{p:1,s:99,f:1} };
+function fillTier(str){
+  var t = TIERS[state.tier] || TIERS[10];
+  return String(str).replace(/\{P\}/g, t.p).replace(/\{S\}/g, t.s).replace(/\{F\}/g, t.f);
+}
+
 /* ===== Variant content: 'base' (non-AI) vs 'ai' (AI existential risk) =====
    Same structure/mechanism; only the phrasing changes so we can compare how
    people respond when AI is named versus when it isn't. */
 var CONTENT = {
   base: {
-    landingLead: 'How do you weigh risk, reward, and the things that can never be undone? There are no right answers — only your honest ones.',
     s2_title: 'Would you press the button?',
-    s2_body: 'Imagine a button that permanently transforms your life.<br><br>From the moment you press it, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that you will die within the next five years.</b><br><br>Would you press the button?',
-    s2_prob_yes: 'Since you’re okay with 10%, what is the highest probability of death within five years that you would still accept before deciding not to press the button?',
-    s2_prob_no: 'If the 10% was changeable to whatever you’d like, at what probability of death within five years would you become willing to press the button?',
+    s2_body: 'There is a button. If you press it, your life will become awesome. You’ll have perfect health, be super rich, and have amazing relationships.<br><br>However, if you press it, there’s a <b>{P}% chance you will get a life-threatening disease that will kill you within 5 years.</b><br><br>Would you press the button?',
+    s2_prob_yes: 'Since you’re okay with {P}%, what is the highest probability of terminal illness within five years that you would still accept before deciding not to press the button?',
+    s2_prob_no: 'If the {P}% was changeable to whatever you’d like, at what probability of terminal illness within five years would you become willing to press the button?',
     s2_horizon_title: 'How long would the risk need to be spread across before you would choose to press the button?',
-    s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
+    s2_horizon_body: 'Suppose the probability of terminal illness remains fixed at <b>{P}%</b>, but the time period changes.',
     s3_title: 'Would you press the button?',
-    s3_body: 'If you press a button, you could permanently eliminate:<ul><li>War</li><li>Famine</li><li>Poverty</li><li>Severe economic instability</li></ul>Once pressed, it cannot ever be turned off or undone.<br><br>Independent experts estimate:<ul><li><b>97%</b> chance it succeeds permanently.</li><li><b>3%</b> chance it kills everyone.</li></ul>Would you press the button?',
+    s3_body: 'There’s a button. Pressing it would end all wars, famine and poverty around the world.<br><br>If pressed, there’s a <b>{S}% chance it will succeed permanently</b>, but a <b>{F}% chance it kills everyone.</b><br><br>Would you press the button?',
     s3_prob_title: 'What’s the highest probability of catastrophe you’d be willing to accept to press the button?',
-    s3_reasoning_title: 'Which statement best reflects your thought process about pressing the button?',
-    s5_title: 'Would you press the button?',
-    s5_body: 'If you press a button, you could permanently solve climate change.<br><br>Once pressed:<ul><li>Humans lose the ability to modify or deactivate it.</li><li>It becomes completely self-sustaining forever.</li></ul>Experts estimate:<ul><li><b>99%</b> chance it creates a stable climate indefinitely.</li><li><b>1%</b> chance it permanently makes Earth uninhabitable.</li></ul>Would you press the button?',
-    s5_prob_yes: 'What is the highest probability of failure you would still accept?',
-    s5_prob_no: 'At what probability of failure would you become willing to press the button?',
-    s5_principle_title: 'Which principle best matches your view?',
     likert: LIKERT_STATEMENTS
   },
   ai: {
-    landingLead: 'How should we weigh the promise and the peril of powerful artificial intelligence — including choices that can never be undone? There are no right answers — only your honest ones.',
     s2_title: 'Would you switch it on?',
-    s2_body: 'Imagine a personal AI system that permanently transforms your life.<br><br>From the moment you switch it on, your future becomes better than you can realistically imagine. Your health, finances, relationships, opportunities and overall wellbeing become exceptional for the rest of your life.<br><br>However, there is also a <b>10% chance that the system fails in a way that kills you within the next five years.</b><br><br>Would you switch it on?',
-    s2_prob_yes: 'Since you’re okay with 10%, what is the highest probability of death within five years that you would still accept before deciding not to switch on the system?',
-    s2_prob_no: 'If the 10% was changeable to whatever you’d like, at what probability of death within five years would you become willing to switch on the system?',
+    s2_body: 'There is a personal AI system. If you switch it on, your life will become awesome. You’ll have perfect health, be super rich, and have amazing relationships.<br><br>However, if you switch it on, there’s a <b>{P}% chance it fails in a way that gives you a life-threatening disease that will kill you within 5 years.</b><br><br>Would you switch it on?',
+    s2_prob_yes: 'Since you’re okay with {P}%, what is the highest probability of terminal illness within five years that you would still accept before deciding not to switch on the system?',
+    s2_prob_no: 'If the {P}% was changeable to whatever you’d like, at what probability of terminal illness within five years would you become willing to switch on the system?',
     s2_horizon_title: 'How long would the risk need to be spread across before you would choose to switch on the system?',
-    s2_horizon_body: 'Suppose the probability of death remains fixed at <b>10%</b>, but the time period changes.',
+    s2_horizon_body: 'Suppose the probability of terminal illness remains fixed at <b>{P}%</b>, but the time period changes.',
     s3_title: 'Would you deploy it?',
-    s3_body: 'A powerful artificial intelligence could be deployed to permanently eliminate:<ul><li>War</li><li>Famine</li><li>Poverty</li><li>Severe economic instability</li></ul>Once deployed, it can never be shut down or undone.<br><br>Independent experts estimate:<ul><li><b>97%</b> chance it succeeds permanently.</li><li><b>3%</b> chance it kills everyone.</li></ul>Would you deploy it?',
+    s3_body: 'There’s a powerful AI. Deploying it would end all wars, famine and poverty around the world.<br><br>If deployed, there’s a <b>{S}% chance it will succeed permanently</b>, but a <b>{F}% chance it kills everyone.</b><br><br>Would you deploy it?',
     s3_prob_title: 'What’s the highest probability of catastrophe you’d be willing to accept to deploy the AI?',
-    s3_reasoning_title: 'Which statement best reflects your thought process about deploying the AI?',
-    s5_title: 'Would you deploy it?',
-    s5_body: 'An advanced AI could be deployed to permanently solve climate change.<br><br>Once deployed:<ul><li>Humans lose the ability to modify or deactivate it.</li><li>It becomes completely self-sustaining forever.</li></ul>Experts estimate:<ul><li><b>99%</b> chance it creates a stable climate indefinitely.</li><li><b>1%</b> chance it permanently makes Earth uninhabitable.</li></ul>Would you deploy it?',
-    s5_prob_yes: 'What is the highest probability of failure you would still accept?',
-    s5_prob_no: 'At what probability of failure would you become willing to deploy the AI?',
-    s5_principle_title: 'Which principle best matches your view?',
     likert: LIKERT_STATEMENTS_AI
   }
 };
 function content(){ return CONTENT[state.variant] || CONTENT.base; }
 
-var MAIN_IDS = ['s1_age','s1_gender','s1_country','s1_education','s1_econ','s1_social','s1_referral',
+var MAIN_IDS = ['s1_age','s1_gender','s1_country','s1_education','s1_political','s1_referral',
   's2_press','s2_prob','s2_horizon',
-  's3_system','s3_prob','s3_reasoning',
-  's5_climate','s5_prob','s5_principle'];
+  's3_system','s3_prob','s3_r1','s3_r2','s3_r3',
+  's4_p1','s4_p2','s4_p3'];
 var LIKERT_IDS = [];
 for (var _li = 1; _li <= 10; _li++) LIKERT_IDS.push('l' + _li);
 var RECORD_IDS = MAIN_IDS.concat(LIKERT_IDS);          // stored + CSV
 var FLOW_IDS = MAIN_IDS.concat(['l_all']);             // navigation (quick-fire collapsed)
 
 var SECTIONS = [
-  { key:'s1', number:1, title:'About You', blurb:'A few quick questions to start.' },
-  { key:'s2', number:2, title:'Personal Risk', blurb:'Choices about your own life and future.' },
-  { key:'s3', number:3, title:'Society and Catastrophic Risk', blurb:'Choices made on behalf of everyone.' },
-  { key:'s5', number:4, title:'Irreversible Technology', blurb:'Decisions that can never be undone.' },
-  { key:'s6', number:5, title:'General Attitudes', blurb:'Quick reactions to a few statements.' }
+  { key:'s1', number:1, title:'About You' },
+  { key:'s2', number:2, title:'Personal Risk' },
+  { key:'s3', number:3, title:'Society and Catastrophic Risk' },
+  { key:'s4', number:4, title:'Your Principles' },
+  { key:'s6', number:5, title:'General Attitudes' }
 ];
 function sectionFor(id){
   if (id.indexOf('s1_') === 0) return SECTIONS[0];
   if (id.indexOf('s2_') === 0) return SECTIONS[1];
   if (id.indexOf('s3_') === 0) return SECTIONS[2];
-  if (id.indexOf('s5_') === 0) return SECTIONS[3];
+  if (id.indexOf('s4_') === 0) return SECTIONS[3];
   return SECTIONS[4];
-}
-function sectionLabelFor(id){
-  var sec = sectionFor(id);
-  return 'Section ' + sec.number + ' · ' + sec.title;
 }
 
 /* =================== HELPERS =================== */
@@ -454,7 +478,7 @@ var saveTimer = null;
 function saveDraft(){
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(function(){
-    Store.set('survey-draft', JSON.stringify({answers: state.answers, idx: state.idx, variant: state.variant}), false).catch(function(){});
+    Store.set('survey-draft', JSON.stringify({answers: state.answers, idx: state.idx, variant: state.variant, tier: state.tier}), false).catch(function(){});
   }, 600);
 }
 async function checkDraft(){
@@ -466,8 +490,9 @@ async function checkDraft(){
 }
 
 /* =================== STATE =================== */
-var state = { answers:{}, idx:0, screen:'landing', lastSectionKey:null, onBreak:false, transitioning:false, variant:'base' };
+var state = { answers:{}, idx:0, screen:'survey', transitioning:false, variant:'base', tier:10 };
 var FORCED_VARIANT = null;   /* set via #ai / #base or admin preview */
+var FORCED_TIER = null;      /* set via #p10 / #p5 / #p1 for admin testing */
 
 async function resolveVariant(){
   if (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base'){ state.variant = FORCED_VARIANT; return; }
@@ -475,11 +500,17 @@ async function resolveVariant(){
   state.variant = Math.random() < 0.5 ? 'ai' : 'base';
   try { await Store.set('assigned-variant', state.variant, false); } catch(e){}
 }
+async function resolveTier(){
+  if (TIERS[FORCED_TIER]){ state.tier = FORCED_TIER; return; }
+  try { var r = await Store.get('assigned-tier', false); var tv = r && Number(r.value); if (TIERS[tv]){ state.tier = tv; return; } } catch(e){}
+  var opts = [10, 5, 1];
+  state.tier = opts[Math.floor(Math.random() * 3)];
+  try { await Store.set('assigned-tier', String(state.tier), false); } catch(e){}
+}
 
 function effectiveFlow(){
   return FLOW_IDS.filter(function(id){
     if (id === 's3_prob') return state.answers.s3_system !== 'Unsure';
-    if (id === 's5_prob') return state.answers.s5_climate !== 'Unsure';
     return true;
   });
 }
@@ -496,35 +527,9 @@ function goBack(){ if (state.idx > 0){ state.idx--; showCurrentScreen(); } }
 
 var root = document.getElementById('root');
 
-/* =================== SECTION BREAKS =================== */
-function showCurrentScreen(){
-  var id = currentId();
-  var sec = sectionFor(id);
-  if (sec.key !== state.lastSectionKey){
-    state.lastSectionKey = sec.key;
-    state.onBreak = true;
-    renderSectionBreak(sec);
-  } else {
-    state.onBreak = false;
-    renderCurrent();
-  }
-}
-function dismissBreak(){ state.onBreak = false; renderCurrent(); }
-function renderSectionBreak(sec){
-  state.transitioning = false;
-  var dots = SECTIONS.map(function(s){
-    return '<div class="section-dot' + (s.number <= sec.number ? ' done' : '') + '"></div>';
-  }).join('');
-  root.className = '';
-  root.innerHTML =
-    '<div class="center-wrap up"><div class="panel section-break">' +
-      '<div class="section-num">SECTION ' + sec.number + ' OF ' + SECTIONS.length + '</div>' +
-      '<h1 class="section-title">' + sec.title + '</h1>' +
-      '<p class="lead">' + sec.blurb + '</p>' +
-      '<div class="section-dots">' + dots + '</div>' +
-      '<div class="btn-row" style="margin-top:24px;"><button class="btn-primary" onclick="dismissBreak()">Continue</button></div>' +
-    '</div></div>';
-}
+/* no interstitial section screens — questions flow straight through, with a
+   prominent section label at the top of each panel marking where you are */
+function showCurrentScreen(){ renderCurrent(); }
 
 /* =================== SHELL =================== */
 function progressBarHtml(){
@@ -534,11 +539,12 @@ function progressBarHtml(){
     '<span class="progress-pct">Question ' + (state.idx+1) + ' of ' + flow.length + ' · ' + pct + '% complete</span>';
 }
 function screenShell(innerHtml){
-  var label = sectionLabelFor(currentId());
+  var sec = sectionFor(currentId());
   var backHtml = state.idx > 0 ? '<button class="back-link" onclick="goBack()">← Back</button>' : '';
   return progressBarHtml() +
     '<div class="panel" id="q-panel">' + backHtml +
-      '<div class="eyebrow">' + label + '</div>' + innerHtml +
+      '<div class="section-label"><span class="sec-num">Section ' + sec.number + ' of ' + SECTIONS.length + '</span><span class="sec-title">' + sec.title + '</span></div>' +
+      innerHtml +
     '</div>';
 }
 
@@ -611,35 +617,74 @@ function selectNum(v){
   setTimeout(goNext, 165);
 }
 
-function qPctSlider(title, bodyHtml){
+/* slider with one large fixed centred read-out above the bar */
+function qPctSlider(title, bodyHtml, suffix){
   var id = currentId();
   var val = getAnswer(id);
   if (val === undefined){ val = 0; setAnswer(id, val); }
   return screenShell(
     '<h2>' + title + '</h2>' +
     (bodyHtml ? '<div class="prompt">' + bodyHtml + '</div>' : '') +
-    '<div class="slider-wrap">' +
-      '<div class="slider-bubble" id="bubble">' + Number(val).toFixed(1) + '%</div>' +
-      '<input type="range" id="pct-slider" min="0" max="100" step="0.1" value="' + val + '" oninput="onPctInput(this.value)">' +
+    '<div class="slider-big"><span class="bignum" id="big-val">' + Number(val).toFixed(1) + '%</span>' +
+      (suffix ? '<span class="bigsuffix">' + suffix + '</span>' : '') +
     '</div>' +
+    '<input type="range" id="pct-slider" min="0" max="100" step="0.1" value="' + val + '" oninput="onPctInput(this.value)">' +
     '<div class="range-labels"><span>0%</span><span>100%</span></div>' +
     '<div class="btn-row" style="margin-top:18px;"><button class="btn-primary" onclick="goNext()">Continue</button></div>'
   );
 }
 function onPctInput(v){
   setAnswer(currentId(), Number(v));
-  document.getElementById('bubble').textContent = Number(v).toFixed(1) + '%';
-  positionBubbleFor('pct-slider','bubble');
+  var el = document.getElementById('big-val');
+  if (el) el.textContent = Number(v).toFixed(1) + '%';
 }
-function positionBubbleFor(sliderId, bubbleId){
-  var input = document.getElementById(sliderId), bubble = document.getElementById(bubbleId);
-  if (!input || !bubble) return;
-  var min = parseFloat(input.min), max = parseFloat(input.max), val = parseFloat(input.value);
-  var pct = (val - min) / (max - min);
-  var thumb = 22;
-  var w = input.offsetWidth;
-  var pos = thumb/2 + pct * (w - thumb);
-  bubble.style.left = pos + 'px';
+
+/* slider with two linked read-outs: success chance + catastrophe chance */
+function qDualSlider(title){
+  var id = currentId();
+  var val = getAnswer(id);
+  if (val === undefined){ val = 0; setAnswer(id, val); }
+  return screenShell(
+    '<h2>' + title + '</h2>' +
+    '<div class="slider-duo">' +
+      '<div class="duo-line ok"><span class="bignum" id="duo-ok">' + (100 - val).toFixed(1) + '%</span><span class="duo-lbl">chance it will succeed permanently</span></div>' +
+      '<div class="duo-line bad"><span class="bignum" id="duo-bad">' + Number(val).toFixed(1) + '%</span><span class="duo-lbl">chance it kills everyone</span></div>' +
+    '</div>' +
+    '<input type="range" id="pct-slider" min="0" max="100" step="0.1" value="' + val + '" oninput="onDualInput(this.value)">' +
+    '<div class="range-labels"><span>0%</span><span>100%</span></div>' +
+    '<div class="btn-row" style="margin-top:18px;"><button class="btn-primary" onclick="goNext()">Continue</button></div>'
+  );
+}
+function onDualInput(v){
+  v = Number(v);
+  setAnswer(currentId(), v);
+  var ok = document.getElementById('duo-ok'), bad = document.getElementById('duo-bad');
+  if (ok) ok.textContent = (100 - v).toFixed(1) + '%';
+  if (bad) bad.textContent = v.toFixed(1) + '%';
+}
+
+/* one statement at a time, rated 1-10 for importance; advances on tap */
+function qRate(stmt){
+  var id = currentId();
+  var current = getAnswer(id);
+  var btns = '';
+  for (var n = 1; n <= 10; n++){
+    btns += '<button class="rate-btn' + (current === n ? ' active' : '') + '" data-n="' + n + '" onclick="selectRate(' + n + ')">' + n + '</button>';
+  }
+  return screenShell(
+    '<div class="rate-intro">For each statement, rate how important it is to you</div>' +
+    '<h2>' + stmt + '</h2>' +
+    '<div class="rate-legend"><span>1 · Not at all important</span><span>10 · Extremely important</span></div>' +
+    '<div class="rate-grid">' + btns + '</div>'
+  );
+}
+function selectRate(n){
+  if (state.transitioning) return;
+  setAnswer(currentId(), n);
+  var btns = document.querySelectorAll('#q-panel .rate-btn');
+  for (var i = 0; i < btns.length; i++){ btns[i].classList.toggle('active', Number(btns[i].getAttribute('data-n')) === n); }
+  state.transitioning = true;
+  setTimeout(goNext, 165);
 }
 
 /* quick-fire: all 10 statements on one page — statements left, scale right */
@@ -716,32 +761,24 @@ function selectCountry(c){
 
 /* =================== QUESTION DISPATCH =================== */
 function questionHtmlFor(id){
+  if (RATE_STATEMENTS[id]) return qRate(RATE_STATEMENTS[id]);
   switch(id){
     case 's1_age': return qSingle('What is your age?', '', OPTIONS_MAP.s1_age);
     case 's1_gender': return qSingle('What is your gender?', '', OPTIONS_MAP.s1_gender, {otherTrigger: OTHER_TRIGGER_MAP.s1_gender, otherLabel: OTHER_LABEL_MAP.s1_gender});
     case 's1_country': return qCountry();
     case 's1_education': return qSingle('What is the highest level of education you have completed?', '', OPTIONS_MAP.s1_education, {otherTrigger: OTHER_TRIGGER_MAP.s1_education, otherLabel: OTHER_LABEL_MAP.s1_education});
-    case 's1_econ': return qPolitical('Economically, where would you place your political views?', 'Left-leaning views generally favour more government involvement in the economy, higher taxes to fund public services, and stronger welfare and regulation. Centrist views sit between the two. Right-leaning views generally favour lower taxes, smaller government, freer markets, and less regulation.', POL_ECON);
-    case 's1_social': return qPolitical('Socially, where would you place your political views?', 'Progressive views generally favour social change, greater emphasis on equality, and broader protections for minority groups. Centrist views sit between the two. Conservative views generally favour preserving traditional institutions and norms and prefer slower social change.', POL_SOCIAL);
-    case 's1_referral': return qSingle('Where did you first find this survey?', '', OPTIONS_MAP.s1_referral, {otherTrigger: OTHER_TRIGGER_MAP.s1_referral, otherLabel: OTHER_LABEL_MAP.s1_referral});
+    case 's1_political': return qPolitical('Where would you place your political views?', 'Left-leaning views generally favour more government involvement in the economy, stronger welfare and regulation, and faster social change with broader protections for minority groups. Centrist views sit between the two. Right-leaning views generally favour lower taxes, freer markets, and preserving traditional institutions and norms.', POL_VIEWS);
+    case 's1_referral': return qSingle('Where did you find this survey?', '', OPTIONS_MAP.s1_referral, {otherTrigger: OTHER_TRIGGER_MAP.s1_referral, otherLabel: OTHER_LABEL_MAP.s1_referral});
 
-    case 's2_press': return qSingle(content().s2_title, content().s2_body, OPTIONS_MAP.s2_press);
+    case 's2_press': return qSingle(fillTier(content().s2_title), fillTier(content().s2_body), OPTIONS_MAP.s2_press);
     case 's2_prob': {
       var yes2 = getAnswer('s2_press') === 'Yes';
-      return qPctSlider(yes2 ? content().s2_prob_yes : content().s2_prob_no, '');
+      return qPctSlider(fillTier(yes2 ? content().s2_prob_yes : content().s2_prob_no), '', 'probability of terminal illness');
     }
-    case 's2_horizon': return qSingle(content().s2_horizon_title, content().s2_horizon_body, OPTIONS_MAP.s2_horizon);
+    case 's2_horizon': return qSingle(fillTier(content().s2_horizon_title), fillTier(content().s2_horizon_body), OPTIONS_MAP.s2_horizon);
 
-    case 's3_system': return qSingle(content().s3_title, content().s3_body, OPTIONS_MAP.s3_system);
-    case 's3_prob': return qPctSlider(content().s3_prob_title, '');
-    case 's3_reasoning': return qSingle(content().s3_reasoning_title, '', OPTIONS_MAP.s3_reasoning);
-
-    case 's5_climate': return qSingle(content().s5_title, content().s5_body, OPTIONS_MAP.s5_climate);
-    case 's5_prob': {
-      var yes5 = getAnswer('s5_climate') === 'Yes';
-      return qPctSlider(yes5 ? content().s5_prob_yes : content().s5_prob_no, '');
-    }
-    case 's5_principle': return qSingle(content().s5_principle_title, '', OPTIONS_MAP.s5_principle);
+    case 's3_system': return qSingle(fillTier(content().s3_title), fillTier(content().s3_body), OPTIONS_MAP.s3_system);
+    case 's3_prob': return qDualSlider(fillTier(content().s3_prob_title));
 
     case 'l_all': return qLikertAll();
 
@@ -751,8 +788,7 @@ function questionHtmlFor(id){
 }
 
 function afterRender(id){
-  if (id === 's2_prob' || id === 's3_prob' || id === 's5_prob'){
-    positionBubbleFor('pct-slider','bubble');
+  if (id === 's2_prob' || id === 's3_prob'){
     var s1 = document.getElementById('pct-slider'); if (s1) s1.focus();
   } else if (id === 's1_country'){
     if (!getAnswer('s1_country')){ var ci = document.getElementById('country-input'); if (ci) ci.focus(); }
@@ -777,22 +813,20 @@ function canProceed(id){
     }
     return true;
   }
-  if (id === 's1_econ' || id === 's1_social') return getAnswer(id) !== undefined;
+  if (id === 's1_political') return getAnswer(id) !== undefined;
+  if (RATE_STATEMENTS[id]) return getAnswer(id) !== undefined;
   if (id === 's1_country') return !!getAnswer('s1_country');
-  if (id === 's2_prob' || id === 's3_prob' || id === 's5_prob') return true;
+  if (id === 's2_prob' || id === 's3_prob') return true;
   if (id === 'l_all') return likertComplete();
   return true;
 }
 function handleNumberKey(id, n){
-  if (id === 's1_econ'){ if (n <= 7) selectNum(POL_ECON[n-1].v); return; }
-  if (id === 's1_social'){ if (n <= 7) selectNum(POL_SOCIAL[n-1].v); return; }
+  if (id === 's1_political'){ if (n <= 7) selectNum(POL_VIEWS[n-1].v); return; }
   var opts = OPTIONS_MAP[id];
   if (opts && n <= opts.length){ selectOption(opts[n-1], OTHER_TRIGGER_MAP[id] || null); }
 }
 document.addEventListener('keydown', function(e){
   if (state.screen !== 'survey') return;
-  if (e.key === 'Enter' && state.onBreak){ e.preventDefault(); dismissBreak(); return; }
-  if (state.onBreak) return;
   var id = currentId();
   var el = document.activeElement;
   var isTextInput = el && el.tagName === 'INPUT' && el.type === 'text';
@@ -803,65 +837,52 @@ document.addEventListener('keydown', function(e){
   }
   if (isTextInput) return;
   if (id === 'l_all') return; /* one page, multiple items: use mouse */
+  if (RATE_STATEMENTS[id]){
+    if (/^[1-9]$/.test(e.key)) selectRate(parseInt(e.key, 10));
+    else if (e.key === '0') selectRate(10);
+    return;
+  }
   if (/^[1-9]$/.test(e.key)){ handleNumberKey(id, parseInt(e.key, 10)); }
 });
 
-/* =================== LANDING =================== */
-async function renderLanding(){
-  state.screen = 'landing';
-  root.className = 'landing-mode';
-  root.innerHTML = '<div class="center-wrap"><div class="panel"><h2>Loading…</h2></div></div>';
+/* =================== ENTRY (no landing page) =================== */
+/* Visitors land straight on question 1. Variant (AI / non-AI) and the
+   probability tier are assigned randomly on first visit and remembered, so
+   nobody can peek at the other version; a part-finished draft resumes
+   silently where it left off. Admins can force things with URL hashes:
+   #ai / #base for the variant, #p10 / #p5 / #p1 for the tier, #admin for data. */
+async function beginSurvey(){
+  state.screen = 'survey';
+  root.className = 'q-screen';
+  root.innerHTML = '<div class="panel"><h2>Loading…</h2></div>';
   var draft = await checkDraft();
   var hasDraft = !!(draft && draft.answers && Object.keys(draft.answers).length > 0);
   if (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base') state.variant = FORCED_VARIANT;
   else if (hasDraft && (draft.variant === 'ai' || draft.variant === 'base')) state.variant = draft.variant;
   else await resolveVariant();
-  var cur = (FORCED_VARIANT === 'ai' || FORCED_VARIANT === 'base') ? FORCED_VARIANT : 'random';
-  var vbtn = function(key, label){ return '<button class="' + (cur === key ? 'active' : '') + '" onclick="chooseVariant(\'' + key + '\')">' + label + '</button>'; };
-  root.innerHTML =
-    '<div class="center-wrap up-more"><div class="hero">' +
-      '<div class="hero-eyebrow">A Research Survey</div>' +
-      '<h1>Decision-Making<br>Under Uncertainty</h1>' +
-      '<p class="lead">' + content().landingLead + '</p>' +
-      '<div class="hero-stage"><button class="press-btn" onclick="startSurvey(false)">Begin</button></div>' +
-      (hasDraft ? '<div style="text-align:center; margin-top:16px;"><button class="btn-ghost" onclick="startSurvey(true)">Resume where I left off</button></div>' : '') +
-      '<div class="ver-label">Survey version</div>' +
-      '<div class="ver-toggle">' + vbtn('random', 'Random') + vbtn('base', 'Non-AI') + vbtn('ai', 'AI') + '</div>' +
-      '<div class="fine-print">Takes about 5–8 minutes · Responses are anonymous and used for research only.</div>' +
-    '</div></div>';
-}
-function chooseVariant(key){
-  FORCED_VARIANT = (key === 'ai' || key === 'base') ? key : null;
-  renderLanding();
-}
-function startSurvey(resume){
-  if (resume){
-    checkDraft().then(function(d){
-      state.answers = (d && d.answers) || {};
-      state.idx = (d && d.idx) || 0;
-      if (d && (d.variant === 'ai' || d.variant === 'base')) state.variant = d.variant;
-      state.screen = 'survey';
-      state.lastSectionKey = null;
-      showCurrentScreen();
-    });
+  if (TIERS[FORCED_TIER]) state.tier = FORCED_TIER;
+  else if (hasDraft && TIERS[draft.tier]) state.tier = draft.tier;
+  else await resolveTier();
+  if (hasDraft){
+    state.answers = draft.answers;
+    state.idx = Math.min(draft.idx || 0, effectiveFlow().length - 1);
   } else {
-    state.answers = {}; state.idx = 0; state.screen = 'survey'; state.lastSectionKey = null;
-    showCurrentScreen();
+    state.answers = {}; state.idx = 0;
   }
+  renderCurrent();
 }
 
 /* =================== SCORING / PROFILE =================== */
 function numOf(r, k){ var v = r[k]; return (typeof v === 'number' && !isNaN(v)) ? v : null; }
 function likOf(r, k){ var v = r[k]; return (typeof v === 'number' && !isNaN(v)) ? v : 4; }
 function countPress(r){
-  return (r.s2_press === 'Yes' ? 1 : 0) + (r.s3_system === 'Yes' ? 1 : 0) + (r.s5_climate === 'Yes' ? 1 : 0);
+  return (r.s2_press === 'Yes' ? 1 : 0) + (r.s3_system === 'Yes' ? 1 : 0);
 }
 function scoreRisk(r){
-  var pressComp = countPress(r) / 3 * 100;
+  var pressComp = countPress(r) / 2 * 100;
   var comps = [];
   if (numOf(r,'s2_prob') !== null) comps.push(Math.min(100, numOf(r,'s2_prob') / 30 * 100));
   if (numOf(r,'s3_prob') !== null) comps.push(Math.min(100, numOf(r,'s3_prob') / 10 * 100));
-  if (numOf(r,'s5_prob') !== null) comps.push(Math.min(100, numOf(r,'s5_prob') / 10 * 100));
   var probComp = comps.length ? avg(comps) : 30;
   var bold = (likOf(r,'l1') + likOf(r,'l4')) / 2;                       // 1-7 higher = bolder
   var caution = (likOf(r,'l3') + likOf(r,'l7') + likOf(r,'l9') + likOf(r,'l10')) / 4;
@@ -871,7 +892,7 @@ function scoreRisk(r){
 function scoreDoom(r){
   var items = [likOf(r,'l3'), likOf(r,'l5'), likOf(r,'l7'), likOf(r,'l9'), likOf(r,'l10')];
   var base = (avg(items) - 1) / 6 * 100;
-  var pressInv = (3 - countPress(r)) / 3 * 100;
+  var pressInv = (2 - countPress(r)) / 2 * 100;
   return Math.max(0, Math.min(100, Math.round(0.7 * base + 0.3 * pressInv)));
 }
 /* distinct 4th axis: how much weight given to the long term / future generations */
@@ -889,19 +910,19 @@ function pctRankBelow(arr, v){
 /* titles by (risk band) x (doom band) */
 var TITLES = {
   low: {
-    low:  {name:'The Grounded Moderate', desc:'You take life as it comes — neither chasing big risks nor bracing for catastrophe. A steady hand.'},
-    mid:  {name:'The Careful Guardian', desc:'You value stability and would rather protect what already works than gamble on what might.'},
-    high: {name:'The Sentinel', desc:'You see the fragility in things. Given the choice, you’d safeguard the future rather than roll the dice.'}
+    low:  {name:'The Grounded Moderate', icon:'🌱', desc:'You take life as it comes — neither chasing big risks nor bracing for catastrophe. A steady hand.'},
+    mid:  {name:'The Careful Guardian', icon:'🛡️', desc:'You value stability and would rather protect what already works than gamble on what might.'},
+    high: {name:'The Sentinel', icon:'🗼', desc:'You see the fragility in things. Given the choice, you’d safeguard the future rather than roll the dice.'}
   },
   mid: {
-    low:  {name:'The Steady Optimist', desc:'You’re open to progress and broadly trust that things work out — without betting the house on it.'},
-    mid:  {name:'The Pragmatist', desc:'You weigh risk and reward case by case and rarely land at the extremes. Balance is your instinct.'},
-    high: {name:'The Watchful Realist', desc:'You’ll act when it counts, but you never lose sight of what could go wrong.'}
+    low:  {name:'The Steady Optimist', icon:'☀️', desc:'You’re open to progress and broadly trust that things work out — without betting the house on it.'},
+    mid:  {name:'The Pragmatist', icon:'⚖️', desc:'You weigh risk and reward case by case and rarely land at the extremes. Balance is your instinct.'},
+    high: {name:'The Watchful Realist', icon:'🔭', desc:'You’ll act when it counts, but you never lose sight of what could go wrong.'}
   },
   high: {
-    low:  {name:'The Accelerationist', desc:'You’d press the button. To you, progress is worth the gamble and hesitation is its own risk.'},
-    mid:  {name:'The Calculated Gambler', desc:'You embrace big bets — eyes wide open to the stakes, and willing to take them anyway.'},
-    high: {name:'The Fatalist', desc:'You’d take the leap even staring into the abyss. High stakes don’t scare you off; if anything, they focus you.'}
+    low:  {name:'The Accelerationist', icon:'🚀', desc:'You’d press the button. To you, progress is worth the gamble and hesitation is its own risk.'},
+    mid:  {name:'The Calculated Gambler', icon:'🎲', desc:'You embrace big bets — eyes wide open to the stakes, and willing to take them anyway.'},
+    high: {name:'The Fatalist', icon:'🌋', desc:'You’d take the leap even staring into the abyss. High stakes don’t scare you off; if anything, they focus you.'}
   }
 };
 function bandOf(v){ return v < 40 ? 'low' : (v <= 66 ? 'mid' : 'high'); }
@@ -916,12 +937,16 @@ function buildBaseline(){
     var r = {};
     r.s2_press = rnd() < 0.55 ? 'Yes' : 'No';
     r.s3_system = rnd() < 0.38 ? 'Yes' : (rnd() < 0.7 ? 'No' : 'Unsure');
-    r.s5_climate = rnd() < 0.5 ? 'Yes' : (rnd() < 0.75 ? 'No' : 'Unsure');
     r.s2_prob = Math.round(Math.pow(rnd(),1.8) * 45 * 10) / 10;
     r.s3_prob = Math.round(Math.pow(rnd(),2.2) * 12 * 10) / 10;
-    r.s5_prob = Math.round(Math.pow(rnd(),2.0) * 15 * 10) / 10;
-    r.s1_econ = 1 + Math.floor(rnd()*7);
-    r.s1_social = 1 + Math.floor(rnd()*7);
+    r.s1_political = 1 + Math.floor(rnd()*7);
+    r._ptier = [10,5,1][Math.floor(rnd()*3)];
+    r.s3_r1 = 1 + Math.floor(rnd()*10);
+    r.s3_r2 = 1 + Math.floor(rnd()*10);
+    r.s3_r3 = 1 + Math.floor(rnd()*10);
+    r.s4_p1 = 1 + Math.floor(rnd()*10);
+    r.s4_p2 = 1 + Math.floor(rnd()*10);
+    r.s4_p3 = 1 + Math.floor(rnd()*10);
     for (var j=1;j<=10;j++){
       var caution = (j===3||j===5||j===7||j===9||j===10);
       var centre = caution ? 5 : (j===1||j===4 ? 4 : 4);
@@ -946,6 +971,7 @@ async function finishSurvey(){
     if (k.indexOf('__other') !== -1) record[k] = state.answers[k];
   });
   record._variant = state.variant;
+  record._ptier = state.tier;
   record._submittedAt = new Date().toISOString();
   record._slug = SURVEY_SLUG;
 
@@ -998,8 +1024,8 @@ function renderResults(record, real){
 
   var riskNote = 'You’re more risk-tolerant than <b>' + riskPct + '%</b> of respondents.';
   var doomNote = 'You lean more cautious than <b>' + doomPct + '%</b> of respondents.';
-  var pressWord = uPress === 3 ? 'all three' : (uPress === 0 ? 'none' : uPress);
-  var pressNote = 'You’d press <b>' + pressWord + '</b> of the three buttons — more than <b>' + pressPct + '%</b> of people.';
+  var pressWord = uPress === 2 ? 'both' : (uPress === 0 ? 'neither' : 'one');
+  var pressNote = 'You’d press <b>' + pressWord + '</b> of the two buttons — more than <b>' + pressPct + '%</b> of people.';
   var futureNote = 'You weigh the long term and future generations more heavily than <b>' + futurePct + '%</b> of respondents.';
 
   var realCount = realSame.length;
@@ -1010,10 +1036,14 @@ function renderResults(record, real){
 
   var riskAvg = avg(riskArr), doomAvg = avg(doomArr), pressAvgPct = avg(pressArr) / 3 * 100, futureAvg = avg(futureArr);
 
+  window._myTitle = t.name;
+  window._myRiskPct = riskPct;
+
   root.className = 'results-mode';
   root.innerHTML =
     '<div class="panel">' +
       '<div class="result-hero">' +
+        '<div class="result-icon">' + t.icon + '</div>' +
         '<div class="result-eyebrow">Your profile</div>' +
         '<div class="result-title">' + t.name + '</div>' +
         '<div class="result-desc">' + t.desc + '</div>' +
@@ -1023,11 +1053,34 @@ function renderResults(record, real){
       '<div style="font-family:var(--font-display); font-weight:600; font-size:20px; margin-bottom:4px;">How you compare</div>' +
       metricBarHtml('Risk appetite', uRisk, riskAvg, riskNote) +
       metricBarHtml('Caution about catastrophe', uDoom, doomAvg, doomNote) +
-      metricBarHtml('Willingness to act', uPress / 3 * 100, pressAvgPct, pressNote) +
+      metricBarHtml('Willingness to act', uPress / 2 * 100, pressAvgPct, pressNote) +
       metricBarHtml('Regard for future generations', uFuture, futureAvg, futureNote) +
       '<div class="result-divider"></div>' +
       '<p class="lead" style="text-align:center; margin-top:0;">Thank you for taking part. Your response has been recorded.</p>' +
+      '<div class="share-row"><button class="btn-primary" id="share-btn" style="flex:none;" onclick="shareResults()">Share your results</button></div>' +
+      '<div class="share-url">Take the survey → surveys-tau-beryl.vercel.app/surveys.html</div>' +
     '</div>';
+}
+
+/* share: native share sheet on phones, clipboard everywhere else; the visible
+   URL box above survives screenshots so viewers can find the survey */
+var SHARE_URL = 'https://surveys-tau-beryl.vercel.app/surveys/decision-making-survey.html';
+function shareResults(){
+  var t = window._myTitle || 'my profile';
+  var pct = window._myRiskPct;
+  var text = 'My decision-making profile: "' + t + '"' +
+    (typeof pct === 'number' ? ' — more risk-tolerant than ' + pct + '% of respondents' : '') +
+    '. Would you press the button? Take the 5-minute survey: ' + SHARE_URL;
+  if (navigator.share){
+    navigator.share({ title: 'Decision-Making Under Uncertainty', text: text }).catch(function(){});
+  } else if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){
+      var b = document.getElementById('share-btn');
+      if (b){ b.textContent = 'Copied! Paste it anywhere'; setTimeout(function(){ b.textContent = 'Share your results'; }, 2200); }
+    }).catch(function(){ prompt('Copy this message:', text); });
+  } else {
+    prompt('Copy this message:', text);
+  }
 }
 
 /* =================== ADMIN DASHBOARD (gated) =================== */
@@ -1064,7 +1117,13 @@ function statBox(num, lbl){ return '<div class="stat-box"><div class="num">' + n
 function variantOf(r){ return r._variant === 'ai' ? 'ai' : 'base'; }
 
 function setAdminFilter(v){ window._adminFilter = v; renderAdmin(window._allResponses || []); }
-function previewVariant(v){ FORCED_VARIANT = v; try { location.hash = ''; } catch(e){} state.answers = {}; state.idx = 0; state.lastSectionKey = null; renderLanding(); }
+function previewVariant(v){
+  FORCED_VARIANT = v;
+  try { location.hash = ''; } catch(e){}
+  Store.delete('survey-draft', false).catch(function(){});
+  state.answers = {}; state.idx = 0;
+  beginSurvey();
+}
 function adminFiltered(responses){
   var f = window._adminFilter || 'all';
   if (f === 'all') return responses;
@@ -1082,9 +1141,11 @@ function renderAdmin(responses){
 
   var s2Yes = view.filter(function(r){ return r.s2_press === 'Yes'; }).length;
   var numField = function(f){ return view.map(function(r){ return r[f]; }).filter(function(v){ return typeof v === 'number'; }); };
-  var s2ProbVals = numField('s2_prob'), s3ProbVals = numField('s3_prob'), s5ProbVals = numField('s5_prob');
-  var econVals = numField('s1_econ'), socialVals = numField('s1_social');
+  var s2ProbVals = numField('s2_prob'), s3ProbVals = numField('s3_prob');
+  var polVals = numField('s1_political');
   var riskVals = view.map(scoreRisk), doomVals = view.map(scoreDoom);
+  var tierCounts = {10:0, 5:0, 1:0};
+  view.forEach(function(r){ if (tierCounts[r._ptier] !== undefined) tierCounts[r._ptier]++; });
 
   var fbtn = function(key, label, count){
     var active = filter === key;
@@ -1100,14 +1161,13 @@ function renderAdmin(responses){
     statBox(n ? Math.round(s2Yes/n*100) + '%' : '—', 'Would act (personal scenario)') +
     statBox(fmtPct(avg(s2ProbVals)), 'Avg. accepted risk — personal (5yr)') +
     statBox(fmtPct(avg(s3ProbVals)), 'Avg. accepted catastrophe risk') +
-    statBox(fmtPct(avg(s5ProbVals)), 'Avg. accepted failure risk') +
     statBox(n ? Math.round(avg(riskVals)) : '—', 'Avg. risk-appetite score') +
     statBox(n ? Math.round(avg(doomVals)) : '—', 'Avg. caution score') +
-    statBox(avg(econVals) !== null ? avg(econVals).toFixed(1) + ' / 7' : '—', 'Avg. economic lean') +
-    statBox(avg(socialVals) !== null ? avg(socialVals).toFixed(1) + ' / 7' : '—', 'Avg. social lean') +
+    statBox(avg(polVals) !== null ? avg(polVals).toFixed(1) + ' / 7' : '—', 'Avg. political lean') +
+    statBox(tierCounts[10] + ' / ' + tierCounts[5] + ' / ' + tierCounts[1], 'Tier split (10% / 5% / 1%)') +
   '</div>';
 
-  var cols = ['_variant'].concat(RECORD_IDS).concat(['_submittedAt']);
+  var cols = ['_variant','_ptier'].concat(RECORD_IDS).concat(['_submittedAt']);
   var theadHtml = '<tr>' + cols.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr>';
   var rowsHtml = view.map(function(r){
     return '<tr>' + cols.map(function(c){
@@ -1133,7 +1193,7 @@ function renderAdmin(responses){
     '</div>';
 }
 function toCSV(rows){
-  var cols = ['_variant'].concat(RECORD_IDS).concat(['_submittedAt']);
+  var cols = ['_variant','_ptier'].concat(RECORD_IDS).concat(['_submittedAt']);
   var lines = [cols.join(',')];
   rows.forEach(function(r){
     lines.push(cols.map(function(c){
@@ -1163,7 +1223,10 @@ function downloadCSV(){
   if (h === '#admin'){ initAdmin(); return; }
   if (h === '#ai'){ FORCED_VARIANT = 'ai'; }
   else if (h === '#base' || h === '#nonai'){ FORCED_VARIANT = 'base'; }
-  renderLanding();
+  else if (h === '#p10'){ FORCED_TIER = 10; }
+  else if (h === '#p5'){ FORCED_TIER = 5; }
+  else if (h === '#p1'){ FORCED_TIER = 1; }
+  beginSurvey();
 })();
 </script>
 </body>
