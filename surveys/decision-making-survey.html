@@ -139,7 +139,7 @@
   .duo-line .duo-lbl{ display:block; font-size:14px; color:var(--text-muted); margin-top:3px; }
 
   /* one-at-a-time importance ratings (1-10) */
-  .rate-intro{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; }
+  .rate-intro{ font-family:var(--font-body); font-size:15px; font-weight:600; letter-spacing:0.01em; color:var(--blue-deep); margin-bottom:10px; }
   .rate-legend{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin:18px 0 8px; }
   .rate-grid{ display:grid; grid-template-columns:repeat(10,1fr); gap:6px; }
   .rate-btn{ aspect-ratio:1; min-width:0; border-radius:8px; background:#fbfcfe; border:1px solid var(--panel-border-lit); color:var(--text-muted); font-family:var(--font-mono); font-size:15px; cursor:pointer; transition:all 90ms ease; }
@@ -1058,13 +1058,13 @@ function renderResults(record, real){
       '<div class="result-divider"></div>' +
       '<p class="lead" style="text-align:center; margin-top:0;">Thank you for taking part. Your response has been recorded.</p>' +
       '<div class="share-row"><button class="btn-primary" id="share-btn" style="flex:none;" onclick="shareResults()">Share your results</button></div>' +
-      '<div class="share-url">Take the survey → surveys-tau-beryl.vercel.app/surveys.html</div>' +
+      '<div class="share-url">Take the survey → tinyurl.com/questionnairerisk</div>' +
     '</div>';
 }
 
 /* share: native share sheet on phones, clipboard everywhere else; the visible
    URL box above survives screenshots so viewers can find the survey */
-var SHARE_URL = 'https://surveys-tau-beryl.vercel.app/surveys/decision-making-survey.html';
+var SHARE_URL = 'https://tinyurl.com/questionnairerisk';
 function shareResults(){
   var t = window._myTitle || 'my profile';
   var pct = window._myRiskPct;

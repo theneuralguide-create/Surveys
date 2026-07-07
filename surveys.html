@@ -89,9 +89,9 @@ function renderSurveys(list){
     var art = s.slug === 'decision-making' ? '<div class="card-art"><div class="mini-press">Press</div></div>' : '';
     return '<a class="survey-card" href="' + escHtml(s.url) + '">' +
       '<div class="card-meta">Survey ' + String(i+1).padStart(2, '0') + ' · ~' + escHtml(mins) + ' min · Anonymous</div>' +
-      art +
       '<h2>' + escHtml(s.title) + '</h2>' +
       '<p>' + escHtml(s.description) + '</p>' +
+      art +
       '<div class="card-cta">Take the survey →</div>' +
     '</a>';
   }).join('');

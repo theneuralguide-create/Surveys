@@ -87,8 +87,12 @@ main{ flex:1; width:100%; max-width:1100px; margin:0 auto; padding:0 28px 60px; 
 .survey-card h2{ font-family:var(--font-display); font-weight:600; font-size:26px; line-height:1.12; }
 .survey-card p{ font-size:14px; color:var(--text-muted); margin-top:8px; flex:1; }
 .card-cta{ margin-top:16px; font-size:14px; font-weight:600; color:var(--blue); }
-.card-art{ display:flex; justify-content:center; padding:10px 0 18px; }
-.card-art .mini-press{ width:120px; height:120px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 35% 28%, var(--blue-bright), var(--blue) 62%, var(--blue-deep) 100%); border:5px solid #dbe7fb; box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 12px 26px rgba(37,99,235,0.30), inset 0 -6px 12px rgba(0,0,0,0.18), inset 0 6px 10px rgba(255,255,255,0.25); color:#fff; font-family:var(--font-display); font-weight:700; font-size:17px; letter-spacing:0.06em; text-transform:uppercase; }
+.card-art{ display:flex; justify-content:center; padding:14px 0 20px; }
+.card-art .mini-press{ width:120px; height:120px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 35% 28%, var(--blue-bright), var(--blue) 62%, var(--blue-deep) 100%); border:5px solid #dbe7fb; box-shadow:0 0 0 3px rgba(37,99,235,0.12), 0 12px 26px rgba(37,99,235,0.30), inset 0 -6px 12px rgba(0,0,0,0.18), inset 0 6px 10px rgba(255,255,255,0.25); color:#fff; font-family:var(--font-display); font-weight:700; font-size:17px; letter-spacing:0.06em; text-transform:uppercase; transition:transform 130ms ease, box-shadow 130ms ease; }
+/* perk up when the cursor arrives… */
+.survey-card:hover .mini-press{ transform:translateY(-4px) scale(1.04); box-shadow:0 0 0 4px rgba(37,99,235,0.16), 0 18px 34px rgba(37,99,235,0.40), inset 0 -7px 13px rgba(0,0,0,0.18), inset 0 7px 11px rgba(255,255,255,0.28); }
+/* …and stay pressed down for as long as the mouse button is held */
+.survey-card:active .mini-press{ transform:translateY(3px) scale(0.93); box-shadow:0 0 0 3px rgba(37,99,235,0.14), 0 5px 12px rgba(37,99,235,0.28), inset 0 -3px 7px rgba(0,0,0,0.22), inset 0 4px 8px rgba(0,0,0,0.12); transition-duration:70ms; }
 .empty-note{ margin-top:26px; color:var(--text-muted); font-size:14.5px; background:var(--panel); border:1px dashed var(--panel-border-lit); border-radius:12px; padding:22px; text-align:center; }
 
 /* ---- panels / buttons / forms (admin) ---- */
