@@ -1058,13 +1058,13 @@ function renderResults(record, real){
       '<div class="result-divider"></div>' +
       '<p class="lead" style="text-align:center; margin-top:0;">Thank you for taking part. Your response has been recorded.</p>' +
       '<div class="share-row"><button class="btn-primary" id="share-btn" style="flex:none;" onclick="shareResults()">Share your results</button></div>' +
-      '<div class="share-url">Take the survey → tinyurl.com/questionnairerisk</div>' +
+      '<div class="share-url">Take the survey → tinyurl.com/letsquestionrisk</div>' +
     '</div>';
 }
 
 /* share: native share sheet on phones, clipboard everywhere else; the visible
    URL box above survives screenshots so viewers can find the survey */
-var SHARE_URL = 'https://tinyurl.com/questionnairerisk';
+var SHARE_URL = 'https://tinyurl.com/letsquestionrisk';
 function shareResults(){
   var t = window._myTitle || 'my profile';
   var pct = window._myRiskPct;
