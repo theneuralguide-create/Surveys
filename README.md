@@ -93,3 +93,22 @@ the public directory but keeps its data.
 - The old in-survey admin view still exists at
   `surveys/decision-making-survey.html#admin` (code `results2026`) and now
   shows pooled backend data too.
+
+## Network — personal CRM (private, phone-installable)
+
+`crm.html` is a second, unlisted app on the same site: a personal CRM for
+tracking who you've spoken to, their contact details and work area, every
+conversation (takeaways, their call to action, the problem you might solve),
+and a follow-up queue that surfaces who's overdue and who's going cold.
+
+It is password-gated and not linked from any page. Its data lives in a free
+Neon Postgres database that only `api/crm.js` (a Vercel serverless function)
+can reach — no public key anywhere. Setup, the security model, and how to
+install it on a phone are in **[CRM_SETUP.md](CRM_SETUP.md)**.
+
+| File | Purpose |
+|---|---|
+| `crm.html`, `crm.css` | The app |
+| `crm-setup.sql` | Database schema + password-checked functions (run once in Neon) |
+| `api/crm.js`, `package.json` | The serverless function and its one dependency |
+| `crm-sw.js`, `manifest.webmanifest`, `icons/` | What makes it installable on a phone |
