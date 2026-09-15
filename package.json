@@ -1,8 +1,0 @@
-{
-  "name": "surveys",
-  "private": true,
-  "description": "Static survey hub + personal CRM (Vercel static files + one serverless function)",
-  "dependencies": {
-    "@neondatabase/serverless": "^1.0.1"
-  }
-}
